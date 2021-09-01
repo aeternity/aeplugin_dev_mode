@@ -1,0 +1,24 @@
+%% -*- mode: erlang; erlang-indent-level: 4; indent-tabs-mode: nil -*-
+{application, aeplugin_dev_mode,
+ [{description, "Basic AE node plugin for 'dev mode'"},
+  {vsn, "0.1.0"},
+  {registered, []},
+  {mod, {aep_dev_mode_app, []}},
+  {applications, [kernel, stdlib, aecore]},
+  {env,
+   [{'$setup_hooks',
+     [
+      {110, {aeplugin_dev_mode_app, check_env, []}}
+     ]},
+    {'$app_ctrl',
+     [{modify,
+       [
+        {roles, [{dev, [join]}]}
+       ]}
+     ]}
+   ]},
+  {modules, []},
+  {licenses, ["ISC"]},
+  {links, ["https://github.com/aeterity/aeternity",
+           "https://github.com/aeternity/aep_dev_mode"]}
+ ]}.
