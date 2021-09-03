@@ -4,14 +4,6 @@
 
 html({Tag, C}) -> tagged(Tag, [], html(C));
 html({Tag, Opt, C}) -> tagged(Tag, Opt, html(C));
-%% html(#{html  := C} = X) -> tagged(html,  X, html(C));
-%% html(#{head  := C} = X) -> tagged(head,  X, html(C));
-%% html(#{title := C} = X) -> tagged(title, X, html(C));
-%% html(#{body  := C} = X) -> tagged(body,  X, html(C));
-%% html(#{p     := C} = X) -> tagged(p,     X, html(C));
-%% html(#{elem  := C, tag := Tag} = X) -> tagged(Tag, X, html(C));
-%% html(#{form  := _} = X) -> form(X);
-%% html(#{href  := URL, text := T}) -> href(T, URL);
 html(L) when is_list(L) -> 
     [html(X) || X <- L];
 html(B) when is_binary(B) -> 

@@ -12,4 +12,5 @@ chain:
             name: "on_demand"
 
 mining:
-    beneficiary: <specify account pubkey>
+    beneficiary: "ak_GLab8McCgXqng1pZbQDmjbCLw6f48qGyP4zWqzqBVnYwdNWVc"
+    beneficiary_reward_delay: 2

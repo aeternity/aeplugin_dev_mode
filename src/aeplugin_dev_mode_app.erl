@@ -15,6 +15,7 @@ stop(_State) ->
     ok.
 
 check_env() ->
+    %% start_trace(),
     case aec_conductor:get_beneficiary() of
         {ok, _} ->
             ok;
@@ -25,12 +26,7 @@ check_env() ->
 
 start_http_api() ->
     Port = get_http_api_port(),
-    Handler = aeplugin_dev_mode_handler,
-    Dispatch = cowboy_router:compile(
-                 [
-                   {'_', [{"/", Handler, []},
-                          {"/emit_kb/", Handler, []}]}
-                 ]),
+    Dispatch = cowboy_router:compile(aeplugin_dev_mode_handler:routes()),
     {ok, _} = cowboy:start_clear(devmode_listener,
                                  [{port, Port}],
                                  #{env => #{dispatch => Dispatch}}),
@@ -38,3 +34,9 @@ start_http_api() ->
 
 get_http_api_port() ->
     list_to_integer(os:getenv("AE_DEVMODE_PORT", "3313")).
+
+
+start_trace() ->
+    dbg:tracer(),
+    dbg:tpl(aec_keys,x),
+    dbg:p(all,[c]).
