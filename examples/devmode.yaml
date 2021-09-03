@@ -1,0 +1,15 @@
+system:
+    plugin_path: <specify lib root for plugins>
+    plugins:
+        - "aeplugin_dev_mode"
+
+fork_management:
+    network_id: ae_dev
+
+chain:
+    consensus:
+        "0":
+            name: "on_demand"
+
+mining:
+    beneficiary: <specify account pubkey>

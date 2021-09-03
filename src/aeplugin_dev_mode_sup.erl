@@ -14,12 +14,12 @@ init([]) ->
                 , intensity => 3
                 , period    => 60 },
     Emitter = aeplugin_dev_mode_emitter,
-    {ok, SupFlags,
-     [
-      #{ id       => Emitter
-       , start    => {Emitter, start_link, []}
-       , restart  => permanent
-       , shutdown => 2000
-       , type     => worker
-       , modules  => [Emitter] }
-     ]}.
+    {ok, {SupFlags,
+          [
+           #{ id       => Emitter
+            , start    => {Emitter, start_link, []}
+            , restart  => permanent
+            , shutdown => 2000
+            , type     => worker
+            , modules  => [Emitter] }
+          ]}}.
