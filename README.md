@@ -23,6 +23,26 @@ activated, there is no going back, as the blocks produced by it would fail
 validation. Also, when `on_demand` consensus is activated, the sync application
 in Aeternity is not run. This is for development and testing only.
 
+## Building
+
+The basic plugin uses some components that the Aeternity source depends on.
+To ensure that the same versions are used, check out the Aeternity source
+from [github](https://github.com/aeternity/aeternity), then set the OS
+environment variable `AE_ROOT` to point to the top `aeternity/` directory.
+The `rebar.config.script` logic in `aeplugin_dev_mode` will then fetch
+the correct versions for all dependencies listed with only the component
+name, e.g. `{deps, [lager, cowboy]}`.
+
+Example:
+```
+$ export AE_ROOT=~/dev/aeternity
+$ rebar3 compile
+```
+
+Note that (for now), the compiled code ends up under `_build/default/lib/`,
+so you can symlink or copy `_build/default/lib/aeplugin_dev_mode` into the
+Aeternity plugin lib root (see below).
+
 ## Configuration
 
 An example of a (presumably minimal) configuration file can be found in
