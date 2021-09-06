@@ -14,3 +14,4 @@ chain:
 mining:
     beneficiary: "ak_GLab8McCgXqng1pZbQDmjbCLw6f48qGyP4zWqzqBVnYwdNWVc"
     beneficiary_reward_delay: 2
+    strictly_follow_top: true

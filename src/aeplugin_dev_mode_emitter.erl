@@ -36,6 +36,7 @@ mine_until_txs_on_chain(TxHashes, Max) when is_list(TxHashes),
 init([]) ->
     aec_events:subscribe(tx_created),
     aec_events:subscribe(tx_received),
+    aec_events:subscribe(top_changed),
     case aec_chain:top_height() of
         0 ->
             aec_conductor:consensus_request(emit_kb);
@@ -48,7 +49,7 @@ handle_call({emit_keyblocks, N}, _From, St) ->
     St1 = emit_keyblocks_(N, St),
     {reply, ok, St1};
 handle_call(emit_microblock, _From, St) ->
-    {noreply, emit_microblock_(St)};
+    {reply, ok, emit_microblock_(St)};
 handle_call({mine_until_txs_on_chain, TxHashes, Max}, _From, St) ->
     {Reply, St1} = mine_until_txs_on_chain_(TxHashes, Max, St),
     {reply, Reply, St1};
@@ -58,10 +59,19 @@ handle_call(_Req, _From, St) ->
 handle_cast(_Msg, St) ->
     {noreply, St}.
 
-handle_info({gproc_ps_event, Event, _Info}, St) when Event == tx_created;
-                                                     Event == tx_received ->
-    flush_tx_events(),
-    {noreply, emit_microblock_(St)};
+handle_info({gproc_ps_event, Event, #{info := STx}}, St)
+  when Event == tx_created; Event == tx_received ->
+    Hashes = [aetx_sign:hash(STx) | flush_tx_events()],
+    lager:info("Tx pool events hashes: ~p", [[encode_hash(H) || H <- Hashes]]),
+    {noreply, mine_until_txs_on_chain_(Hashes, 10, St)};
+handle_info({gproc_ps_event, top_changed, #{info := Info}}, St) ->
+    case Info of
+        #{block_type := key, height := Height} ->
+            lager:info("New key block - height: ~p", [Height]);
+        #{block_type := micro} ->
+            info_micro_block(Info)
+    end,
+    {noreply, St};
 handle_info(_Msg, St) ->
     {noreply, St}.
 
@@ -71,15 +81,29 @@ terminate(_Reason, _St) ->
 code_change(_FromVsn, St, _Extra) ->
     {ok, St}.
 
+info_micro_block(#{block_type := micro, block_hash := BHash, height := Height}) ->
+    case aec_chain:get_block(BHash) of
+        {ok, Block} ->
+            Txs = aec_blocks:txs(Block),
+            lager:info("New micro block - height: ~p, ~p txs",
+                       [Height, length(Txs)]);
+        {error, Reason} ->
+            %% Shouldn't happen
+            lager:info("New micro block - height: ~p, CANNOT READ (~p)",
+                       [Height, Reason])
+    end.
 
 flush_tx_events() ->
     receive
-        {gproc_ps_event, Event, _} when Event == tx_created;
-                                        Event == tx_received ->
-            flush_tx_events()
+        {gproc_ps_event, Event, #{info := STx}} when Event == tx_created;
+                                                     Event == tx_received ->
+            [aetx_sign:hash(STx) | flush_tx_events()]
     after 0 ->
-            ok
+            []
     end.
+
+encode_hash(Hash) ->
+    aeser_api_encoder:encode(tx_hash, Hash).
 
 emit_keyblocks_(N, St) ->
     aec_conductor:consensus_request({mine_blocks, N, key}),
@@ -90,5 +114,6 @@ emit_microblock_(St) ->
     St.
 
 mine_until_txs_on_chain_(TxHashes, Max, St) ->
-    Reply = aec_conductor:consensus_request({mine_until_txs_on_chain, TxHashes, Max}),
+    Reply = aec_conductor:consensus_request(
+              {mine_blocks_until_txs_on_chain, TxHashes, Max}),
     {Reply, St}.

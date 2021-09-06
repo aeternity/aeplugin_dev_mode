@@ -15,6 +15,7 @@ routes() ->
     [
      {'_', [ {"/", ?MODULE, []}
            , {"/emit_kb/", ?MODULE, []}
+           , {"/emit_mb/", ?MODULE, []}
            , {"/spend", ?MODULE, []}
            ]}
     ].
@@ -41,6 +42,8 @@ index_html(Req, State) ->
                {body,
                 [{a, #{href => <<"/">>}, <<"home">>},
                  {h2, <<"Actions">>},
+                 {a, #{href => <<"/emit_mb">>, method => get}, <<"Emit microblock">>},
+                 {p, []},
                  {form, #{action => <<"/emit_kb">>, method => get},
                   [{label, #{for => n}, <<"N: ">>},
                    {input, #{type => text, id => n, name => n}, []},
@@ -106,6 +109,8 @@ serve_request(#{path := <<"/emit_kb">>, qs := Qs}) ->
         _ ->
             aeplugin_dev_mode_emitter:emit_keyblocks(N)
     end;
+serve_request(#{path := <<"/emit_mb">>}) ->
+    aeplugin_dev_mode_emitter:emit_microblock();
 serve_request(#{path := <<"/spend">>, qs := Qs}) ->
     Params = httpd:parse_query(Qs),
     [From, To, AmountB] = [proplists:get_value(K, Params)

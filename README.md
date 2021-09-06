@@ -68,11 +68,16 @@ the [aeplugin_dev_mode_handler](src/aeplugin_dev_mode_handler.erl) module.
 Setting the reward delay as low as it will go (2), will ensure that rewards
 are paid out sooner.
 
+The `strictly_follow_top` option should be set to ensure that each new
+microblock is based on the latest microblock top. When blocks are generated
+as quickly as possible, there is otherwise a risk that micro-forks occur.
+There will be no human-noticeable performance penalty for enabling this option.
+
 ```yaml
 mining:
     beneficiary: "ak_GLab8McCgXqng1pZbQDmjbCLw6f48qGyP4zWqzqBVnYwdNWVc"
     beneficiary_reward_delay: 2
-
+    strictly_follow_top: true
 ```
 
 ## Demo web interface
