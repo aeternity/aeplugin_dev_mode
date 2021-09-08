@@ -57,14 +57,22 @@ Only the plugins listed under `system:plugins` will be loaded.
 
 ```yaml
 system:
-    plugin_path: <lib root for plugin (erlang) applications>
+    plugin_path: <specify lib root for plugins>
     plugins:
-        - "aeplugin_dev_mode"
+        -
+          name: aeplugin_dev_mode
+          config:
+            keyblock_interval: 0
+            microblock_interval: 0
+            auto_emit_microblocks: true
 ```
 
 Setting the `network_id` to `ae_dev` triggers some useful defaults for
 development mode, and also ensures that the node cannot accidentally connect
 to the mainnet or testnet.
+
+The parameters `keyblock_interval`, `microblock_interval` and `auto_emit_microblocks`
+are defined in the schema [priv/aeplugin_dev_mode_config_schema.json](priv/aeplugin_dev_mode_config_schema.json). The settings are automatically checked against the schema when the plugin starts.
 
 ```yaml
 fork_management:

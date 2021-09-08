@@ -16,6 +16,9 @@ routes() ->
      {'_', [ {"/", ?MODULE, []}
            , {"/emit_kb/", ?MODULE, []}
            , {"/emit_mb/", ?MODULE, []}
+           , {"/kb_interval/", ?MODULE, []}
+           , {"/mb_interval/", ?MODULE, []}
+           , {"/auto_emit_mb/", ?MODULE, []}
            , {"/spend", ?MODULE, []}
            ]}
     ].
@@ -44,15 +47,15 @@ index_html(Req, State) ->
                  {h2, <<"Actions">>},
                  {a, #{href => <<"/emit_mb">>, method => get}, <<"Emit microblock">>},
                  {p, []},
-                 {form, #{action => <<"/emit_kb">>, method => get},
-                  [{label, #{for => n}, <<"N: ">>},
-                   {input, #{type => text, id => n, name => n}, []},
-                   {input, #{type => submit, value => <<"Emit keyblocks">>}, []}
-                  ]},
+                 emit_kb_form(),
+                 set_kb_interval_form(),
+                 set_mb_interval_form(),
+                 auto_emit_mb_form(),
                  spend_form(),
                  {hr, []},
                  {h2, <<"Chain:">>},
                  {p, [<<"Top height: ">>, integer_to_binary(aec_chain:top_height())]},
+                 {p, [<<"Mempool size: ">>, integer_to_binary(aec_tx_pool:size())]},
                  {h3, <<"Account balances">>},
                  accounts_table()
                 ]}
@@ -75,6 +78,42 @@ accounts_table() ->
 account_balances() ->
     {ok, Trees} = aec_chain:get_block_state(aec_chain:top_block_hash()),
     aec_accounts_trees:get_all_accounts_balances(aec_trees:accounts(Trees)).
+
+emit_kb_form() ->
+    {form, #{action => <<"/emit_kb">>, method => get},
+     [{label, #{for => n}, <<"N: ">>},
+      {input, #{type => text, id => n, name => n}, []},
+      {input, #{type => submit, value => <<"Emit keyblocks">>}, []}
+     ]}.
+
+set_kb_interval_form() ->
+    Prev = aeplugin_dev_mode_emitter:get_keyblock_interval(),
+    {form, #{action => <<"/kb_interval">>, method => get},
+     [{label, #{for => secs}, <<"Secs: ">>},
+      {input, #{type => text, id => secs, name => secs, value => integer_to_binary(Prev)}, []},
+      {input, #{type => submit, value => <<"Keyblock interval (0 turns off)">>}, []}
+     ]}.
+
+set_mb_interval_form() ->
+    Prev = aeplugin_dev_mode_emitter:get_microblock_interval(),
+    {form, #{action => <<"/mb_interval">>, method => get},
+     [{label, #{for => secs}, <<"Secs: ">>},
+      {input, #{type => text, id => secs, name => secs, value => integer_to_binary(Prev)}, []},
+      {input, #{type => submit, value => <<"Microblock interval (0 turns off)">>}, []}
+     ]}.
+
+auto_emit_mb_form() ->
+    Bool = aeplugin_dev_mode_emitter:get_auto_emit_microblocks(),
+    CBox0 = #{type => checkbox, id => auto_emit, name => auto_emit},
+    CBox = if Bool -> CBox0#{checked => true};
+              true -> CBox0
+           end,
+    {form, #{action => <<"/auto_emit_mb">>, method => get},
+     [{label, #{for => auto_emit}, <<"Auto-emit microblocks">>},
+      {input, #{type => hidden, value => atom_to_binary(Bool, utf8), id => previous, name => previous}, []},
+      {input, CBox, []},
+      {input, #{type => submit, value => <<"Set option(s)">>}, []}
+     ]}.
 
 spend_form() ->
     EncPubs = [aeser_api_encoder:encode(account_pubkey, K) || {K,_} <- demo_keypairs()],
@@ -109,8 +148,32 @@ serve_request(#{path := <<"/emit_kb">>, qs := Qs}) ->
         _ ->
             aeplugin_dev_mode_emitter:emit_keyblocks(N)
     end;
+serve_request(#{path := <<"/kb_interval">>, qs := Qs}) ->
+    parse_qs(Qs, [{<<"secs">>, integer, undefined}],
+             fun(undefined) ->
+                     weird;
+                (Secs) ->
+                     aeplugin_dev_mode_emitter:set_keyblock_interval(Secs),
+                     lager:info("New keyblock interval: ~p secs" ++ maybe_off(Secs), [Secs])
+             end);
+serve_request(#{path := <<"/mb_interval">>, qs := Qs}) ->
+    parse_qs(Qs, [{<<"secs">>, integer, undefined}],
+             fun(undefined) ->
+                     weird;
+                (Secs) ->
+                     aeplugin_dev_mode_emitter:set_microblock_interval(Secs),
+                     lager:info("New microblock interval: ~p secs" ++ maybe_off(Secs), [Secs])
+             end);
 serve_request(#{path := <<"/emit_mb">>}) ->
     aeplugin_dev_mode_emitter:emit_microblock();
+serve_request(#{path := <<"/auto_emit_mb">>, qs := Qs}) ->
+    Params = httpd:parse_query(Qs),
+    case {proplists:get_value(<<"auto_emit">>, Params, <<"off">>),
+          proplists:get_value(<<"previous">>, Params, <<"false">>)} of
+        {<<"off">>, <<"true">>}  -> set_auto_emit(false);
+        {<<"on">> , <<"false">>} -> set_auto_emit(true);
+        _ -> ok
+    end;
 serve_request(#{path := <<"/spend">>, qs := Qs}) ->
     Params = httpd:parse_query(Qs),
     [From, To, AmountB] = [proplists:get_value(K, Params)
@@ -140,6 +203,49 @@ serve_request(#{path := <<"/spend">>, qs := Qs}) ->
     end;
 serve_request(_) ->
     ok.
+
+maybe_off(0) ->
+    " (off)";
+maybe_off(_) ->
+    "".
+
+set_auto_emit(Bool) when is_boolean(Bool) ->
+    aeplugin_dev_mode_emitter:auto_emit_microblocks(Bool),
+    lager:info("Auto-emit microblocks set to ~s", [if Bool -> "on"; true -> "off" end]).
+
+parse_qs(Qs, Types, F) ->
+    Params = httpd:parse_query(Qs),
+    try lists:map(
+          fun(PSpec) ->
+                  case parse_param(PSpec, Params) of
+                      {ok, Val} ->
+                          Val;
+                      Error ->
+                          lager:info("Bad parameter: ~p -> ~p", [PSpec, Error]),
+                          throw(parse_error)
+                  end
+          end, Types) of
+        Vals ->
+            apply(F, Vals)
+    catch
+        throw:parse_error ->
+            ignore
+    end.
+
+parse_param({Name, Type, Default}, Params) ->
+    case lists:keyfind(Name, 1, Params) of
+        {_, Val0} ->
+            check_type(Val0, Type, Name);
+        false ->
+            {ok, Default}
+    end.
+
+check_type(V, integer, Name) ->
+    try {ok, binary_to_integer(V)}
+    catch
+        error:_ ->
+            {error, {not_an_integer, V, Name}}
+    end.
 
 sign_tx(Tx, PrivKey) ->
     Bin = aetx:serialize_to_binary(Tx),
