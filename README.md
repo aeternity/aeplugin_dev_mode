@@ -122,5 +122,5 @@ which should be the beneficiary account, thereby accumulating funds.
 Whenever a transaction is pushed to the mempool, the plugin will be notified
 and emits a microblock.
 
-![aeplugin_dev_mode_screenshot](https://user-images.githubusercontent.com/160216/132022473-15bcd02f-2805-4d90-a0da-ffd530a1a701.png)
+![devmode-ui](https://user-images.githubusercontent.com/160216/132554293-36d90780-af3b-4967-b39b-adc49f4f9bf3.png)
 
