@@ -168,10 +168,11 @@ serve_request(#{path := <<"/emit_mb">>}) ->
     aeplugin_dev_mode_emitter:emit_microblock();
 serve_request(#{path := <<"/auto_emit_mb">>, qs := Qs}) ->
     Params = httpd:parse_query(Qs),
-    case {proplists:get_value(<<"auto_emit">>, Params, <<"off">>),
-          proplists:get_value(<<"previous">>, Params, <<"false">>)} of
-        {<<"off">>, <<"true">>}  -> set_auto_emit(false);
-        {<<"on">> , <<"false">>} -> set_auto_emit(true);
+    case {proplists:get_value(<<"auto_emit">>, Params, undefined),
+          proplists:get_value(<<"previous">>, Params, undefined)} of
+        {undefined, <<"true">>}  -> set_auto_emit(false); % quirk of html checkboxes
+        {<<"off">>, _} -> set_auto_emit(false);
+        {<<"on">> , _} -> set_auto_emit(true);
         _ -> ok
     end;
 serve_request(#{path := <<"/spend">>, qs := Qs}) ->

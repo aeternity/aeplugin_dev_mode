@@ -124,3 +124,18 @@ and emits a microblock.
 
 ![devmode-ui](https://user-images.githubusercontent.com/160216/132554293-36d90780-af3b-4967-b39b-adc49f4f9bf3.png)
 
+## Demo REST interface
+
+For the purposes of the demo web interface, the following primitive REST API was
+added:
+
+* `/emit_mb` - Emit a microblock
+* `/emit_kb?n=<N>` - Emit N keyblocks
+* `/kb_interval?secs=<S>` - Set a keyblock interval of S seconds (`secs=0` turns off)
+* `/mb_interval?secs=<S>` - Set a microblock interval of S seconds (`secs=0` turns off)
+* `/auto_emit_mb?auto_emit=on` - Turn on auto-emission of microblocks on tx push
+* `/auto_emit_mb?auto_emit=off` - Turn off auto-emission of microblocks on tx push
+
+Note that when `auto_emit` is on, the devmode consensus logic will interleave microblocks
+and keyblocks (one microblock followed by one keyblocks) until all expected transactions
+are on-chain.
