@@ -57,14 +57,22 @@ Only the plugins listed under `system:plugins` will be loaded.
 
 ```yaml
 system:
-    plugin_path: <lib root for plugin (erlang) applications>
+    plugin_path: <specify lib root for plugins>
     plugins:
-        - "aeplugin_dev_mode"
+        -
+          name: aeplugin_dev_mode
+          config:
+            keyblock_interval: 0
+            microblock_interval: 0
+            auto_emit_microblocks: true
 ```
 
 Setting the `network_id` to `ae_dev` triggers some useful defaults for
 development mode, and also ensures that the node cannot accidentally connect
 to the mainnet or testnet.
+
+The parameters `keyblock_interval`, `microblock_interval` and `auto_emit_microblocks`
+are defined in the schema [priv/aeplugin_dev_mode_config_schema.json](priv/aeplugin_dev_mode_config_schema.json). The settings are automatically checked against the schema when the plugin starts.
 
 ```yaml
 fork_management:
@@ -114,5 +122,20 @@ which should be the beneficiary account, thereby accumulating funds.
 Whenever a transaction is pushed to the mempool, the plugin will be notified
 and emits a microblock.
 
-![aeplugin_dev_mode_screenshot](https://user-images.githubusercontent.com/160216/132022473-15bcd02f-2805-4d90-a0da-ffd530a1a701.png)
+![devmode-ui](https://user-images.githubusercontent.com/160216/132554293-36d90780-af3b-4967-b39b-adc49f4f9bf3.png)
 
+## Demo REST interface
+
+For the purposes of the demo web interface, the following primitive REST API was
+added:
+
+* `/emit_mb` - Emit a microblock
+* `/emit_kb?n=<N>` - Emit N keyblocks
+* `/kb_interval?secs=<S>` - Set a keyblock interval of S seconds (`secs=0` turns off)
+* `/mb_interval?secs=<S>` - Set a microblock interval of S seconds (`secs=0` turns off)
+* `/auto_emit_mb?auto_emit=on` - Turn on auto-emission of microblocks on tx push
+* `/auto_emit_mb?auto_emit=off` - Turn off auto-emission of microblocks on tx push
+
+Note that when `auto_emit` is on, the devmode consensus logic will interleave microblocks
+and keyblocks (one microblock followed by one keyblocks) until all expected transactions
+are on-chain.

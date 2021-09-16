@@ -4,6 +4,7 @@
   {vsn, "0.1.0"},
   {registered, []},
   {mod, {aeplugin_dev_mode_app, []}},
+  {start_phases, [{check_config, []}]},
   {applications, [kernel, stdlib, aecore]},
   {env,
    [{'$setup_hooks',

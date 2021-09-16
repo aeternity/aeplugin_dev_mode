@@ -1,0 +1,22 @@
+{
+    "$schema" : "http://json-schema.org/draft-04/schema#",
+    "type" : "object",
+    "additionalProperties" : false,
+    "properties" : {
+        "keyblock_interval" : {
+            "type" : "integer",
+            "help" : "Interval, in seconds, between keyblocks. If 0, keyblocks are only produced on-demand",
+            "default" : 0
+        },
+        "microblock_interval" : {
+            "type" : "integer",
+            "help" : "Interval, in seconds, between microblocks. If 0, microblocks are only produced on-demand",
+            "default" : 0
+        },
+        "auto_emit_microblocks" : {
+            "type" : "boolean",
+            "default" : false,
+            "help" : "Emit microblocks as soon as transactions have been pushed to the mempool"
+        }
+    }
+}
