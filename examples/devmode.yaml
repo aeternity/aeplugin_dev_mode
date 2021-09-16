@@ -1,5 +1,5 @@
 system:
-    plugin_path: <specify lib root for plugins>
+    plugin_path: {{PLUGIN_PATH}}
     plugins:
         -
           name: aeplugin_dev_mode
