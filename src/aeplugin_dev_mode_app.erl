@@ -7,7 +7,9 @@
 
 -export([ check_env/0 ]).
 
--define(PLUGIN_NAME_STR, "aeplugin_dev_mode").
+-define(PLUGIN_NAME_STR, <<"aeplugin_dev_mode">>).
+-define(SCHEMA_FNAME, "aeplugin_dev_mode_config_schema.json").
+-define(OS_ENV_PFX, "DEV").
 
 start(_Type, _Args) ->
     {ok, Pid} = aeplugin_dev_mode_sup:start_link(),
@@ -15,22 +17,11 @@ start(_Type, _Args) ->
     {ok, Pid}.
 
 start_phase(check_config, _Type, _Args) ->
-    case aeu_env:find_config([<<"system">>, <<"plugins">>], [user_config, schema_default]) of
-        {ok, Objs} ->
-            case [Conf ||
-                     #{<<"name">> := <<?PLUGIN_NAME_STR>>, <<"config">> := Conf}
-                         <- Objs] of
-                [Config] ->
-                    check_config(Config);
-                [] ->
-                    lager:warning("Could not fetch plugin config object (~p)",
-                                  [?PLUGIN_NAME_STR]),
-                    ok
-            end;
-        _ ->
-                    lager:warning("Could not fetch plugin config object (~p)",
-                                  [?PLUGIN_NAME_STR]),
-                    ok
+    case aeu_plugins:check_config(?PLUGIN_NAME_STR, ?SCHEMA_FNAME, ?OS_ENV_PFX) of
+        Config when is_map(Config) ->
+            apply_config(Config);
+        not_found ->
+            ok
     end.
 
 stop(_State) ->
@@ -57,16 +48,11 @@ start_http_api() ->
 get_http_api_port() ->
     list_to_integer(os:getenv("AE_DEVMODE_PORT", "3313")).
 
-check_config(Config0) ->
-    {ok, AppName} = application:get_application(),
-    SchemaF = filename:join(code:priv_dir(AppName),
-                            "aeplugin_dev_mode_config_schema.json"),
-    {ok, Config} = aeu_plugins:validate_config(Config0, SchemaF),
+apply_config(Config) ->
     maybe_set_keyblock_interval(Config),
     maybe_set_microblock_interval(Config),
     maybe_set_auto_emit(Config),
     ok.
-
 
 maybe_set_keyblock_interval(#{<<"keyblock_interval">> := Interval}) ->
     aeplugin_dev_mode_emitter:set_keyblock_interval(Interval);
