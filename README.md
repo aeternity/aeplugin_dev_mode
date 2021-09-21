@@ -111,7 +111,7 @@ mining:
 ## Demo web interface
 
 There is a very simple web interface to illustrate what the plugin does.
-By default, it listens to port 3331, but this can be changed by setting
+By default, it listens to port 3313, but this can be changed by setting
 the OS environment variable `AE_DEVMODE_PORT`.
 
 The demo web page lets you generate a given number of key blocks instantly.
