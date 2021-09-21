@@ -9,7 +9,7 @@
 
 -define(PLUGIN_NAME_STR, <<"aeplugin_dev_mode">>).
 -define(SCHEMA_FNAME, "aeplugin_dev_mode_config_schema.json").
--define(OS_ENV_PFX, "DEV").
+-define(OS_ENV_PFX, "DEVMODE").
 
 start(_Type, _Args) ->
     {ok, Pid} = aeplugin_dev_mode_sup:start_link(),
