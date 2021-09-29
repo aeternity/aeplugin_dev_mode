@@ -28,12 +28,14 @@ stop(_State) ->
     ok.
 
 check_env() ->
-    %% start_trace(),
-    case aec_conductor:get_beneficiary() of
-        {ok, _} ->
-            ok;
-        {error, beneficiary_not_configured} ->
-            lager:warning("Beneficiary not configured. Dev mode may not work", [])
+    case aeu_plugins:is_dev_mode() of
+        true ->
+            #{pubkey := Pub} = aecore_env:patron_keypair_for_testing(),
+            EncPubkey = aeser_api_encoder:encode(account_pubkey, Pub),
+            aeu_plugins:suggest_config([<<"mining">>, <<"beneficiary">>], EncPubkey),
+            aeu_plugins:suggest_config([<<"mining">>, <<"beneficiary_reward_delay">>], 2);
+        false ->
+            ok
     end,
     ok.
 
