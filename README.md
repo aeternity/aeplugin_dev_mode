@@ -43,6 +43,20 @@ Note that (for now), the compiled code ends up under `_build/default/lib/`,
 so you can symlink or copy `_build/default/lib/aeplugin_dev_mode` into the
 Aeternity plugin lib root (see below).
 
+## Loading
+
+After compiling, copy or link the application directory found at
+`_build/default/lib/aeplugin_dev_mode` into the AE node's plugin lib
+root. If not otherwise configured, this defaults to `$AETERNITY_TOP/plugins/`.
+After this, the node can be started either with a configuration as suggested
+below, or most simply by providing some OS environment variables, for example:
+
+```
+AE__SYSTEM__DEV_MODE=true \
+  AE__SYSTEM__PLUGINS='[{"name":"aeplugin_dev_mode"}]' \
+  bin/aeternity console
+```
+
 ## Configuration
 
 An example of a (presumably minimal) configuration file can be found in
@@ -57,7 +71,7 @@ Only the plugins listed under `system:plugins` will be loaded.
 
 ```yaml
 system:
-    plugin_path: <specify lib root for plugins>
+    dev_mode: true
     plugins:
         -
           name: aeplugin_dev_mode
@@ -67,46 +81,39 @@ system:
             auto_emit_microblocks: true
 ```
 
-Setting the `network_id` to `ae_dev` triggers some useful defaults for
-development mode, and also ensures that the node cannot accidentally connect
-to the mainnet or testnet.
+Note that the `config` attribute can be left out. The values in the example
+are the default values, except for `auto_emit_microblocks`, which defaults to `false`.
+
+Setting `dev_mode: true` instructs the node to set sensible defaults for development,
+unless those parameters are explicitly set to other values. These defaults are:
+
+| group             | key                        | value                   |
+|-------------------|----------------------------|-------------------------|
+| `fork_management` | `network_id`               | `ae_dev`                |
+| `chain`           | `consensus`                | `0 : {name: on_demand}` |
+| `mining`          | `beneficiary_reward_delay` | `2`                     |
+| `mining`          | `strictly_follow_top`      | `true`                  |
+| `mining` | `beneficiary` | `ak_2a1j2Mk9YSmC1gioUq4PWRm3bsv887MbuRVwyv4KaUGoR1eiKi` |
+
+The beneficiary account is a keypair created for testing purposes, which can be
+accessed from the node using `aecore_env:patron_keypair_for_testing()`. It is
+automatically loaded during dev mode and testing as a pre-configured account, loaded
+with 10<sup>32</sup> AE.
+
+Note that setting the `network_id` to `ae_dev` activates some defaults in itself -
+mainly: the `on_demand` consensus mode.
 
 The parameters `keyblock_interval`, `microblock_interval` and `auto_emit_microblocks`
 are defined in the schema [priv/aeplugin_dev_mode_config_schema.json](priv/aeplugin_dev_mode_config_schema.json). The settings are automatically checked against the schema when the plugin starts.
 
-```yaml
-fork_management:
-    network_id: ae_dev
-```
-
-This setting enables `on_demand` consensus from height zero (the genesis block).
-```yaml
-chain:
-    consensus:
-        "0":
-            name: "on_demand"
-```
-
-Finally, a beneficiary account needs to be defined. This tells the local node,
-among other things, that it can mine keyblocks. Also, block rewards will
-accumulate on the beneficiary account, and can then be distributed to other
-accounts. The specific account below belongs to a key pair hard-coded in
-the [aeplugin_dev_mode_handler](src/aeplugin_dev_mode_handler.erl) module.
-
-Setting the reward delay as low as it will go (2), will ensure that rewards
-are paid out sooner.
+Setting the reward delay as low as it will go (`2`), will ensure that rewards
+are paid out sooner, which can be useful to generate funds in the beneficiary
+account by producing keyblocks.
 
 The `strictly_follow_top` option should be set to ensure that each new
 microblock is based on the latest microblock top. When blocks are generated
 as quickly as possible, there is otherwise a risk that micro-forks occur.
 There will be no human-noticeable performance penalty for enabling this option.
-
-```yaml
-mining:
-    beneficiary: "ak_GLab8McCgXqng1pZbQDmjbCLw6f48qGyP4zWqzqBVnYwdNWVc"
-    beneficiary_reward_delay: 2
-    strictly_follow_top: true
-```
 
 ## Demo web interface
 

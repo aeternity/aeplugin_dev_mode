@@ -263,14 +263,10 @@ is_demo_pubkey(K) ->
 min_gas_price() ->
     aec_tx_pool:minimum_miner_gas_price().
 
-%% Encoded pubkey of first keypair of the demo_keypairs():
-%%     ak_GLab8McCgXqng1pZbQDmjbCLw6f48qGyP4zWqzqBVnYwdNWVc
-%%
-%% This is used as beneficiary in the examples/devmode.yaml
-
 %% [{Pubkey, Privkey}]
 demo_keypairs() ->
-    [{<<34,211,105,168,28,63,144,218,27,148,69,230,108,203,60,
+    [patron_keypair(),
+     {<<34,211,105,168,28,63,144,218,27,148,69,230,108,203,60,
         118,189,48,67,20,68,151,186,192,77,185,248,60,73,145,
         254,193>>,
       <<251,183,173,174,69,15,7,18,184,88,101,70,33,94,137,156,
@@ -296,3 +292,6 @@ demo_keypairs() ->
         240,53,192>>}
     ].
 
+patron_keypair() ->
+    #{pubkey := Pub, privkey := Priv} = aecore_env:patron_keypair_for_testing(),
+    {Pub, Priv}.
