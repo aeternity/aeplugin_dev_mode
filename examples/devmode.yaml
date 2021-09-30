@@ -1,4 +1,5 @@
 system:
+    dev_mode: true
     plugins:
         -
           name: aeplugin_dev_mode

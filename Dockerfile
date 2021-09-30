@@ -7,7 +7,6 @@ RUN cd /aeplugin_dev_mode && rebar3 compile
 
 FROM aeternity/aeternity:master
 
-RUN mkdir /home/aeternity/node/plugins
 COPY --from=pluginbuild /aeplugin_dev_mode/_build/default/lib/aeplugin_dev_mode /home/aeternity/node/plugins/aeplugin_dev_mode
 
 # I have no idea why this extra step is needed
@@ -18,4 +17,4 @@ COPY ./examples/devmode.yaml /home/aeternity/node/devmode.yaml
 
 EXPOSE 3313
 
-ENV AETERNITY_CONFIG=/home/aeternity/node/devmode.yaml AE__SYSTEM__PLUGIN_PATH=/home/aeternity/node/plugins
+ENV AETERNITY_CONFIG=/home/aeternity/node/devmode.yaml
