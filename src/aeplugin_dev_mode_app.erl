@@ -7,6 +7,8 @@
 
 -export([ check_env/0 ]).
 
+-export([ info/0 ]).
+
 -define(PLUGIN_NAME_STR, <<"aeplugin_dev_mode">>).
 -define(SCHEMA_FNAME, "aeplugin_dev_mode_config_schema.json").
 -define(OS_ENV_PFX, "DEVMODE").
@@ -25,6 +27,7 @@ start_phase(check_config, _Type, _Args) ->
     end.
 
 stop(_State) ->
+    stop_http_api(),
     ok.
 
 check_env() ->
@@ -47,6 +50,9 @@ start_http_api() ->
                                  #{env => #{dispatch => Dispatch}}),
     ok.
 
+stop_http_api() ->
+    cowboy:stop_listener(devmode_listener).
+
 get_http_api_port() ->
     list_to_integer(os:getenv("AE_DEVMODE_PORT", "3313")).
 
@@ -55,6 +61,12 @@ apply_config(Config) ->
     maybe_set_microblock_interval(Config),
     maybe_set_auto_emit(Config),
     ok.
+
+info() ->
+    #{ keyblock_interval => aeplugin_dev_mode_emitter:get_keyblock_interval()
+     , microblock_interval => aeplugin_dev_mode_emitter:get_microblock_interval()
+     , auto_demit_microblocks => aeplugin_dev_mode_emitter:get_auto_emit_microblocks()
+     }.
 
 maybe_set_keyblock_interval(#{<<"keyblock_interval">> := Interval}) ->
     aeplugin_dev_mode_emitter:set_keyblock_interval(Interval);
