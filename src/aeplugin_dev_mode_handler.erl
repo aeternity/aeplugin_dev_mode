@@ -5,6 +5,7 @@
 -export([ init/2
         , content_types_provided/2
         , index_html/2
+        , json_api/2
         %% , emit_keyblocks/2
         %% , emit_microblock/2
         ]).
@@ -20,6 +21,7 @@ routes() ->
            , {"/mb_interval/", ?MODULE, []}
            , {"/auto_emit_mb/", ?MODULE, []}
            , {"/spend", ?MODULE, []}
+           , {"/status", ?MODULE, []}
            ]}
     ].
 
@@ -30,8 +32,27 @@ init(Req, Opts) ->
 content_types_provided(Req, State) ->
     serve_request(Req),
     {[
-       {<<"text/html">>, index_html}
+       {<<"text/html">>, index_html},
+       {<<"application/json">>, json_api}
      ], Req, State}.
+
+json_api(#{path := <<"/status">>} = Req, State) ->
+    Response = jsx:encode(#{
+        <<"devmode_settings">> => #{ 
+            <<"auto_emit_microblocks">> => aeplugin_dev_mode_emitter:get_auto_emit_microblocks(), 
+            <<"keyblock_interval">> => aeplugin_dev_mode_emitter:get_keyblock_interval(), 
+            <<"microblock_interval">> => aeplugin_dev_mode_emitter:get_microblock_interval()},
+        <<"chain">> => #{ 
+            <<"top_height">> => aec_chain:top_height(), 
+            <<"mempool_height">> => aec_tx_pool:size(),
+            <<"all_balances">> => balances_json()},
+        <<"accounts">> => devmode_accounts()    }),
+    {Response, Req, State};
+json_api(Req, State) ->
+    Response = jsx:encode(#{<<"library">> => <<"jsx">>, <<"awesome">> => true}),
+    {Response, Req, State}.
+
+
 
 index_html(Req, State) ->
     HTML = html(
@@ -74,6 +95,17 @@ accounts_table() ->
                  {tr, [{td, maybe_strong(Strong, EncKey)},
                        {td, maybe_strong(Strong, integer_to_binary(V))}]}
          end, Balances) ]}.
+
+balances_json() ->
+    Balances = account_balances(),
+    lists:map(
+        fun({K, V}) ->
+                EncKey = aeser_api_encoder:encode(account_pubkey, K),
+                #{<<"public_key">> => EncKey, <<"balance">> => V }
+        end, Balances).
+
+devmode_accounts() ->
+    _Keys = [#{<<"public_key">> => aeser_api_encoder:encode(account_pubkey, PubK), <<"private_key">> => hexlify(PrivK)} || {PubK,PrivK} <- demo_keypairs()].
 
 account_balances() ->
     {ok, Trees} = aec_chain:get_block_state(aec_chain:top_block_hash()),
@@ -295,3 +327,9 @@ demo_keypairs() ->
 patron_keypair() ->
     #{pubkey := Pub, privkey := Priv} = aecore_env:patron_keypair_for_testing(),
     {Pub, Priv}.
+
+hexlify(Bin) when is_binary(Bin) ->
+    << <<(hex(H)),(hex(L))>> || <<H:4,L:4>> <= Bin >>.
+
+hex(C) when C < 10 -> $0 + C;
+    hex(C) -> $a + C - 10.
