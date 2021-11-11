@@ -22,6 +22,7 @@ routes() ->
            , {"/auto_emit_mb/", ?MODULE, []}
            , {"/spend", ?MODULE, []}
            , {"/status", ?MODULE, []}
+	   , {"/rollback", ?MODULE, []}
            ]}
     ].
 
@@ -72,11 +73,13 @@ index_html(Req, State) ->
                  set_mb_interval_form(),
                  auto_emit_mb_form(),
                  spend_form(),
+		 {h4, <<"Rollback">>},
+		 rollback_form(),
                  {hr, []},
-                 {h2, <<"Chain:">>},
+                 {h3, <<"Chain:">>},
                  {p, [<<"Top height: ">>, integer_to_binary(aec_chain:top_height())]},
                  {p, [<<"Mempool size: ">>, integer_to_binary(aec_tx_pool:size())]},
-                 {h3, <<"Account balances">>},
+                 {h4, <<"Account balances">>},
                  accounts_table()
                 ]}
               ]}),
@@ -159,6 +162,15 @@ spend_form() ->
       {label, #{for => amount}, <<"Amount: ">>},
       {input, #{type => text, id => amount, name => amount}, []},
       {input, #{type => submit, value => <<"Spend">>}, []}
+     ]}.
+
+rollback_form() ->
+    {form, #{action => <<"/rollback">>, method => get},
+     [{label, #{for => height}, <<"To height: ">>},
+      {input, #{type => text, id => height, name => height}, []},
+      {label, #{for => hash}, <<"To hash: ">>},
+      {input, #{type => text, id => hash, name => hash}, []},
+      {input, #{type => submit, value => <<"Rollback">>}, []}
      ]}.
 
 maybe_strong(true , Text) -> {strong, Text};
@@ -251,6 +263,22 @@ serve_request(#{path := <<"/status">>}) ->
            },
       <<"accounts">> => devmode_accounts()
      };
+serve_request(#{path := <<"/rollback">>, qs := Qs}) ->
+    Params = httpd:parse_query(Qs),
+    io:fwrite("Params = ~p~n", [Params]),
+    [H, B] = [proplists:get_value(K, Params, <<>>)
+	      || K <- [<<"height">>, <<"hash">>]],
+    {ok, [[Root]]} = init:get_argument(root),
+    Script = filename:join(Root, "bin/aeternity db_rollback"),
+    Cmd = binary_to_list(
+	    iolist_to_binary(
+	      [Script,
+	       [[" -h ", H] || H =/= <<>> ],
+	       [[" -b ", B] || B =/= <<>> ]])),
+    io:fwrite("Cmd = ~p~n", [Cmd]),
+    Res = os:cmd(Cmd),
+    io:fwrite(">> ~s~n", [Res]),
+    ok;
 serve_request(_) ->
     ok.
 
