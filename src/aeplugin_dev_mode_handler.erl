@@ -30,29 +30,28 @@ init(Req, Opts) ->
     {cowboy_rest, Req, Opts}.
 
 content_types_provided(Req, State) ->
-    serve_request(Req),
+    Result = serve_request(Req),
     {[
        {<<"text/html">>, index_html},
        {<<"application/json">>, json_api}
-     ], Req, State}.
+     ], Req#{'$result' => Result}, State}.
 
-json_api(#{path := <<"/status">>} = Req, State) ->
-    Response = jsx:encode(#{
-        <<"devmode_settings">> => #{ 
-            <<"auto_emit_microblocks">> => aeplugin_dev_mode_emitter:get_auto_emit_microblocks(), 
-            <<"keyblock_interval">> => aeplugin_dev_mode_emitter:get_keyblock_interval(), 
-            <<"microblock_interval">> => aeplugin_dev_mode_emitter:get_microblock_interval()},
-        <<"chain">> => #{ 
-            <<"top_height">> => aec_chain:top_height(), 
-            <<"mempool_height">> => aec_tx_pool:size(),
-            <<"all_balances">> => balances_json()},
-        <<"accounts">> => devmode_accounts()    }),
-    {Response, Req, State};
-json_api(Req, State) ->
-    Response = jsx:encode(#{<<"library">> => <<"jsx">>, <<"awesome">> => true}),
-    {Response, Req, State}.
-
-
+json_api(#{'$result' := Result, qs := Qs} = Req, State) ->
+    Response = case Result of
+                   ok ->
+                       #{ <<"result">> => <<"ok">> };
+                   {error, Reason} ->
+                       #{ <<"error">> => to_bin(Reason)};
+                   Map when is_map(Map) ->
+                       Map
+               end,
+    JSON = parse_qs(Qs, [{<<"pp_json">>, boolean, false}],
+                    fun(false) ->
+                            jsx:encode(Response);
+                       (true) ->
+                            jsx:encode(Response, [{indent, 2}])
+                    end),
+    {JSON, Req, State}.
 
 index_html(Req, State) ->
     HTML = html(
@@ -105,7 +104,9 @@ balances_json() ->
         end, Balances).
 
 devmode_accounts() ->
-    _Keys = [#{<<"public_key">> => aeser_api_encoder:encode(account_pubkey, PubK), <<"private_key">> => hexlify(PrivK)} || {PubK,PrivK} <- demo_keypairs()].
+    [#{<<"public_key">> => aeser_api_encoder:encode(account_pubkey, PubK),
+       <<"private_key">> => hexlify(PrivK)}
+     || {PubK,PrivK} <- demo_keypairs()].
 
 account_balances() ->
     {ok, Trees} = aec_chain:get_block_state(aec_chain:top_block_hash()),
@@ -191,7 +192,7 @@ serve_request(#{path := <<"/kb_interval">>, qs := Qs}) ->
 serve_request(#{path := <<"/mb_interval">>, qs := Qs}) ->
     parse_qs(Qs, [{<<"secs">>, integer, undefined}],
              fun(undefined) ->
-                     weird;
+                     {error, unknown_parameters};
                 (Secs) ->
                      aeplugin_dev_mode_emitter:set_microblock_interval(Secs),
                      lager:info("New microblock interval: ~p secs" ++ maybe_off(Secs), [Secs])
@@ -232,8 +233,24 @@ serve_request(#{path := <<"/spend">>, qs := Qs}) ->
             ok;
         false ->
             lager:info("'From' account not a known demo account", []),
-            ok
+            {error, unknown_account}
     end;
+serve_request(#{path := <<"/status">>}) ->
+    #{
+      <<"devmode_settings">> =>
+          #{
+             <<"auto_emit_microblocks">> => aeplugin_dev_mode_emitter:get_auto_emit_microblocks(),
+             <<"keyblock_interval">> => aeplugin_dev_mode_emitter:get_keyblock_interval(),
+             <<"microblock_interval">> => aeplugin_dev_mode_emitter:get_microblock_interval()
+           },
+      <<"chain">> =>
+          #{
+            <<"top_height">> => aec_chain:top_height(),
+            <<"mempool_height">> => aec_tx_pool:size(),
+            <<"all_balances">> => balances_json()
+           },
+      <<"accounts">> => devmode_accounts()
+     };
 serve_request(_) ->
     ok.
 
@@ -278,7 +295,9 @@ check_type(V, integer, Name) ->
     catch
         error:_ ->
             {error, {not_an_integer, V, Name}}
-    end.
+    end;
+check_type(V, boolean, _Name) ->
+    {ok, not lists:member(V, [<<"0">>, <<"false">>])}.
 
 sign_tx(Tx, PrivKey) ->
     Bin = aetx:serialize_to_binary(Tx),
@@ -333,3 +352,10 @@ hexlify(Bin) when is_binary(Bin) ->
 
 hex(C) when C < 10 -> $0 + C;
     hex(C) -> $a + C - 10.
+
+to_bin(B) when is_binary(B) ->
+    B;
+to_bin(A) when is_atom(A) ->
+    atom_to_binary(A, utf8);
+to_bin(X) ->
+    iolist_to_binary(io_lib:fwrite("~p", [X])).
