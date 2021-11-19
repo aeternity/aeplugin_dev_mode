@@ -16,7 +16,7 @@
     {'$app_ctrl',
      [{modify,
        [
-        {roles, [{dev, [join]}]}
+        {roles, [{basic, [join]}]}
        ]}
      ]}
    ]},
