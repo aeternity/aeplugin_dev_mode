@@ -113,9 +113,9 @@ $ curl -H 'Accept: application/json' 'http://localhost:3313/mb_interval?secs=0&p
 #### Auto-emit microblocks
 **Method:** `/auto_emit_mb`
 **Parameters:**
-| name        | type                | default  |
-|-------------|---------------------|----------|
-| `auto_emit` | string (`on | off`) | `off`    |
+| name        | type                 | default  |
+|-------------|----------------------|----------|
+| `auto_emit` | string (`on \| off`) | `off`    |
 
 Turns auto-emission of microblocks on or off. If on, microblocks are emitted
 automatically whenever transactions are pushed to the mempool. Microblocks
