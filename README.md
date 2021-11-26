@@ -133,6 +133,9 @@ and emits a microblock.
 
 ## Demo REST interface
 
+The REST interface can return JSON data. See the [JSON REST API documentation](doc/json_api.md)
+for details.
+
 For the purposes of the demo web interface, the following primitive REST API was
 added:
 
