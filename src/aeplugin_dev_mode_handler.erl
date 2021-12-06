@@ -88,13 +88,15 @@ index_html(Req, State) ->
 accounts_table() ->
     Balances = account_balances(),
     {table,
-     [{tr, [{th, <<"Key">>},
+     [{tr, [{th, <<"Pub Key">>},
+            {th, <<"Priv Key">>},
             {th, <<"Balance">>}]}
      | lists:map(
          fun({K, V}) ->
                  Strong = is_demo_pubkey(K),
                  EncKey = aeser_api_encoder:encode(account_pubkey, K),
                  {tr, [{td, maybe_strong(Strong, EncKey)},
+                       {td, maybe_strong(Strong, privkey_if_demokey(K))},
                        {td, maybe_strong(Strong, integer_to_binary(V))}]}
          end, Balances) ]}.
 
@@ -341,6 +343,15 @@ acct(Key) ->
 
 is_demo_pubkey(K) ->
     lists:keymember(K, 1, demo_keypairs()).
+
+privkey_if_demokey(Pub) ->
+    case is_demo_pubkey(Pub) of
+        true ->
+            {_, Priv} = lists:keyfind(Pub, 1, demo_keypairs()),
+            hexlify(Priv);
+        false ->
+            <<"-">>
+    end.
 
 min_gas_price() ->
     aec_tx_pool:minimum_miner_gas_price().
