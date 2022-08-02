@@ -14,6 +14,8 @@
 -define(OS_ENV_PFX, "DEVMODE").
 
 start(_Type, _Args) ->
+    Workspace = determine_workspace(),
+    lager:info("Devmode Workspace: ~p ~n", [Workspace]),
     {ok, Pid} = aeplugin_dev_mode_sup:start_link(),
     ok = start_http_api(),
     {ok, Pid}.
@@ -29,6 +31,23 @@ start_phase(check_config, _Type, _Args) ->
 stop(_State) ->
     stop_http_api(),
     ok.
+
+
+determine_workspace() ->
+    %% TODO: Determine some work space name for existing databases, too
+    case os:getenv("AE__CHAIN__DB_PATH") of
+        false -> <<"Existing Database">>;
+        Path -> lists:last(filename:split(Path))
+    end.
+
+
+is_empty_dir(Dir) ->
+    case file:list_dir_all(Dir) of
+        {ok, []} -> true;
+        _ -> false
+    end.
+         
+
 
 check_env() ->
     case aeu_plugins:is_dev_mode() of
