@@ -15,11 +15,28 @@
   {git,"https://github.com/ninenines/cowlib",
        {ref,"3ef5b48a028bb66f82b452c98ae515903096641c"}},
   1},
+ {<<"eaex10">>,
+  {git,"https://github.com/aeternity/eaex10.git",
+       {ref,"958046a45ffd75265446553f41ca1ccb66ce5f0c"}},
+  0},
+ {<<"ebip39">>,
+  {git,"https://github.com/aeternity/ebip39.git",
+       {ref,"75203401b39aeba45f20b7128f84eeda6a2a4ab6"}},
+  0},
+ {<<"ec_utils">>,
+  {git,"https://github.com/hanssv/ec_utils.git",
+       {ref,"e557b1c40540a5fba66647ede304179949d9e96c"}},
+  1},
  {<<"enacl">>,
   {git,"https://github.com/aeternity/enacl.git",
        {ref,"26180f42c0b3a450905d2efd8bc7fd5fd9cece75"}},
   1},
+ {<<"epbkdf2">>,
+  {git,"https://github.com/aeternity/epbkdf2",
+       {ref,"38a2c730fdbe250f0adf198ea4bd24352dd5b223"}},
+  1},
  {<<"goldrush">>,{pkg,<<"goldrush">>,<<"0.1.9">>},1},
+ {<<"hex2bin">>,{pkg,<<"hex2bin">>,<<"1.0.0">>},2},
  {<<"jsx">>,
   {git,"https://github.com/talentdeficit/jsx.git",
        {ref,"3074d4865b3385a050badf7828ad31490d860df5"}},
@@ -35,10 +52,16 @@
  {<<"setup">>,
   {git,"https://github.com/uwiger/setup.git",
        {ref,"52de0d49e219f553e3202766e09a135c458dbf1d"}},
-  0}]}.
+  0},
+ {<<"sha3">>,
+  {git,"https://github.com/aeternity/erlang-sha3",
+       {ref,"b5f27a29ba1179e5907c50d7ec7aa79b2857e981"}},
+  1}]}.
 [
 {pkg_hash,[
- {<<"goldrush">>, <<"F06E5D5F1277DA5C413E84D5A2924174182FB108DABB39D5EC548B27424CD106">>}]},
+ {<<"goldrush">>, <<"F06E5D5F1277DA5C413E84D5A2924174182FB108DABB39D5EC548B27424CD106">>},
+ {<<"hex2bin">>, <<"AAC26EAB998AE80EACEE1C7607C629AB503EBF77A62B9242BAE2B94D47DCB71E">>}]},
 {pkg_hash_ext,[
- {<<"goldrush">>, <<"99CB4128CFFCB3227581E5D4D803D5413FA643F4EB96523F77D9E6937D994CEB">>}]}
+ {<<"goldrush">>, <<"99CB4128CFFCB3227581E5D4D803D5413FA643F4EB96523F77D9E6937D994CEB">>},
+ {<<"hex2bin">>, <<"E7012D1D9AADD26E680F0983D26FB8923707F05FAC9688F19F530FA3795E716F">>}]}
 ].
