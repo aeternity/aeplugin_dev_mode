@@ -56,9 +56,14 @@ check_env() ->
     % set_acc_gen_start_settings(),
 
     %% make acc gen code available:
-    code:add_patha(os:getenv("ACC_MODULE")),
+    case os:getenv("AE__CHAIN__DB_PATH") of
+        false -> ok;
+        Path ->
+            code:add_patha(Path)
+    end,
+
     Workspace = determine_workspace(),
-    maybe_generate_accounts(Workspace),
+    % maybe_generate_accounts(Workspace),
 
 
 
@@ -109,15 +114,18 @@ maybe_generate_accounts(Workspace) ->
     %% A CLI tool will provide a DB path representing either a work space, or some existing database (maybe for the sake of using some synced node data)
     %% So here we check whether that DB path already has any data present. if not, it's a new workspace and we generate accounts. the node later looks 
     %% for that file when in devmode and, if present uses it instead of its hardcoded accounts json.
-    lager:info("---------->>> In ! ~p ~n", [here]),
     case os:getenv("AE__CHAIN__DB_PATH") of
         false -> ok;
         Path -> 
             case is_empty_dir(Path) of 
                 true ->
-                    lager:info("---------->>> Found empty workspace, generating Accounts ! ~p ~n", []),
+                    lager:info("---------->>> Found empty workspace, generating Accounts !"),
                     %% TODO: Add further account creation options here, for now use default acc generating
-                    AccountsList = try aeu_acc_generator:generate_accounts() of
+                    
+                    % aeplugin_dev_mode_acc_gen:reachable(),
+                    AccountsList = aeplugin_dev_mode_acc_gen:reachable(),
+                    lager:info("---------->>> Generated accounts ! ~p ~n",[AccountsList]),
+                    AccountsList = try aeplugin_dev_mode_acc_gen:generate_accounts() of
                                 #{nodeFormat := Accs} when is_list(Accs) -> Accs
                             catch
                                 error:_ -> 
