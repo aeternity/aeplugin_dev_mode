@@ -126,10 +126,21 @@ maybe_generate_accounts(Workspace) ->
                     %% TODO: Add further account creation options here, for now use default acc generating
                     
                     % aeplugin_dev_mode_acc_gen:reachable(),
-                    AccountsList = aeplugin_dev_mode_acc_gen:generate_accounts(),
-                    lager:info("---------->>> Generated accounts ! ~p ~n",[AccountsList]),
+                    % AccountsList = aeplugin_dev_mode_acc_gen:generate_accounts(),
+                    % lager:info("---------->>> Generated accounts ! ~p ~n",[AccountsList]),
+
+% get
+
+%  #{"ak_Ggoui97gg5qLR2d4Zo8u8e4rXJzte5B3grYhozWbkn126DqbD" =>
+% 10000000000000000000000000000000,
+% "ak_PnCoFwjJi8MeMdPJSCB18P9QEma8kQtL7Z15PrSFSma5mGQNp" =>
+% 10000000000000000000000000000000}
+
+% into bitstring syntax as required here 
+%                     https://github.com/talentdeficit/jsx
+
                     AccountsList = try aeplugin_dev_mode_acc_gen:generate_accounts() of
-                                #{nodeFormat := Accs} when is_list(Accs) -> Accs
+                                #{nodeFormat := Accs} when is_map(Accs) -> Accs
                             catch
                                 error:_ -> 
                                     erlang:error(failed_generating_devmode_accs)

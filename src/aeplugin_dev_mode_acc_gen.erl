@@ -33,11 +33,14 @@ to_all_formats(ListOfDerivedKeys, Balance) ->
             end,
         ListOfDerivedKeys),
 
-    NodeFormat = lists:map(fun(D) -> 
+    TupleList = lists:map(fun(D) -> 
         #{pub_key := Public} = eaex10:private_to_public(D),    
-        {binary_to_atom(aeser_api_encoder:encode(account_pubkey, Public)), Balance} 
+        {list_to_binary(binary_to_list(aeser_api_encoder:encode(account_pubkey, Public))), Balance} 
             end,
         ListOfDerivedKeys),
+    NodeFormat = maps:from_list(TupleList),
+    
+    io:fwrite("Node format is: ~p ~n", [NodeFormat]),
 
     #{readableFormat => ReadableFormat, 
         devmodeFormat => DevmodeFormat, 
