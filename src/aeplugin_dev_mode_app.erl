@@ -62,8 +62,11 @@ check_env() ->
             code:add_patha(Path)
     end,
 
+    Seed = ebip39:mnemonic_to_seed(ebip39:generate_mnemonic(128), <<"">>),
+    lager:info("===================>>>> seed? ~p ~n", [Seed]),
+
     Workspace = determine_workspace(),
-    % maybe_generate_accounts(Workspace),
+    maybe_generate_accounts(Workspace),
 
 
 
@@ -123,7 +126,7 @@ maybe_generate_accounts(Workspace) ->
                     %% TODO: Add further account creation options here, for now use default acc generating
                     
                     % aeplugin_dev_mode_acc_gen:reachable(),
-                    AccountsList = aeplugin_dev_mode_acc_gen:reachable(),
+                    AccountsList = aeplugin_dev_mode_acc_gen:generate_accounts(),
                     lager:info("---------->>> Generated accounts ! ~p ~n",[AccountsList]),
                     AccountsList = try aeplugin_dev_mode_acc_gen:generate_accounts() of
                                 #{nodeFormat := Accs} when is_list(Accs) -> Accs
