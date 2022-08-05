@@ -14,11 +14,10 @@
 -define(OS_ENV_PFX, "DEVMODE").
 
 start(_Type, _Args) ->
-    Workspace = determine_workspace(),
-    lager:info("Devmode Workspace: ~p ~n", [Workspace]),
-    lager:info("---------->>> We are in process: ~p ~n", [self()]),
-    Lookup = ets: lookup(acc_gen_settings, generate_accounts),
-    lager:info("---------->>> ETS lookup? ~p ~n", [Lookup]),
+    % Workspace = determine_workspace(),
+    % lager:info("Devmode Workspace: ~p ~n", [Workspace]),
+    % Lookup = ets:lookup(acc_gen_settings, generate_accounts),
+    % lager:info("---------->>> ETS lookup? ~p ~n", [Lookup]),
     {ok, Pid} = aeplugin_dev_mode_sup:start_link(),
     ok = start_http_api(),
     {ok, Pid}.
@@ -54,7 +53,15 @@ is_empty_dir(Dir) ->
 
 
 check_env() ->
-    set_acc_gen_start_settings(),
+    % set_acc_gen_start_settings(),
+
+    %% make acc gen code available:
+    code:add_patha(os:getenv("ACC_MODULE")),
+    Workspace = determine_workspace(),
+    maybe_generate_accounts(Workspace),
+
+
+
     case aeu_plugins:is_dev_mode() of
         true ->
             #{pubkey := Pub} = aecore_env:patron_keypair_for_testing(),
@@ -66,22 +73,71 @@ check_env() ->
     end,
     ok.
 
-set_acc_gen_start_settings() ->
+% Tried to create an everlasting ETS table to circumvent the unavailability of module
+% 's in Ulf's lifecycle hook functions, the child process that the ETS ownership was handed
+%  to kept dying for some reason though..
+
+% set_acc_gen_start_settings() ->
+%     case os:getenv("AE__CHAIN__DB_PATH") of
+%         false -> ok;
+%         Path -> 
+%             case is_empty_dir(Path) of 
+%                 true ->
+%                     lager:info("---------->>> Found empty workspace, telling devmode to generate Accounts ! ~p ~n", [placeholder]),
+%                     lager:info("---------->>> We are in process: ~p ~n", [self()]),
+%                     % ETSowner = spawn(aeplugin_dev_mode_app, ets_owner_fun,[]),                    
+%                     % Everlasting = fun(F) -> receive _ -> F end end,
+
+%                     Everlasting = fun Ever() -> receive Msg -> io:fwrite("------> Received: ~p ~n", [Msg]), Ever end end,
+%                     % ETSowner = spawn(Everlasting(Everlasting)),
+%                     ETSowner = spawn(Everlasting),
+%                     lager:info("---------->>> Spawned ETS owner: ~p ~n", [ETSowner]),
+%                     ets:new(acc_gen_settings, [set, named_table]),
+%                     ets:insert(acc_gen_settings, {generate_accounts, true}),
+%                     ets:give_away(acc_gen_settings, ETSowner, none),
+
+%                     LookupTest = ets:lookup(acc_gen_settings, generate_accounts),
+%                     lager:info("Lookup test: ~p ~n", [LookupTest]);
+
+%                     %% TODO: Add further account creation options here, for now use default acc generating
+%                 false -> 
+%                     ok
+%             end
+%     end.
+
+maybe_generate_accounts(Workspace) ->
+    %% A CLI tool will provide a DB path representing either a work space, or some existing database (maybe for the sake of using some synced node data)
+    %% So here we check whether that DB path already has any data present. if not, it's a new workspace and we generate accounts. the node later looks 
+    %% for that file when in devmode and, if present uses it instead of its hardcoded accounts json.
+    lager:info("---------->>> In ! ~p ~n", [here]),
     case os:getenv("AE__CHAIN__DB_PATH") of
         false -> ok;
         Path -> 
             case is_empty_dir(Path) of 
                 true ->
-                    lager:info("---------->>> Found empty workspace, telling devmode to generate Accounts ! ~p ~n", [placeholder]),
-                    lager:info("---------->>> We are in process: ~p ~n", [self()]),
-                    ets:new(acc_gen_settings, [set, named_table]),
-                    ets:insert(acc_gen_settings, {generate_accounts, true});
+                    lager:info("---------->>> Found empty workspace, generating Accounts ! ~p ~n", []),
                     %% TODO: Add further account creation options here, for now use default acc generating
-                false -> 
-                    ok
+                    AccountsList = try aeu_acc_generator:generate_accounts() of
+                                #{nodeFormat := Accs} when is_list(Accs) -> Accs
+                            catch
+                                error:_ -> 
+                                    erlang:error(failed_generating_devmode_accs)
+                            end,
+                    
+                    AccountsJSON = 
+                            try jsx:encode(AccountsList) of
+                                List when is_list(List) -> List
+                            catch
+                                error:_ ->
+                                    erlang:error(failed_jsonencoding_generated_devmode_accounts)
+                            end,
+                    JSONfilePath = filename:join(Path, "devmode_accs_" ++ Workspace ++ ".json"),
+                    {ok, File} = file:open(JSONfilePath, [write]),
+                    lager:info("---------->>> Writing accounts file to: ~p ~n", [JSONfilePath]),
+                    file:write(File, AccountsJSON);
+                false -> ok
             end
     end.
-
 
 start_http_api() ->
     Port = get_http_api_port(),
