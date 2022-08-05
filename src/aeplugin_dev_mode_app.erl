@@ -16,6 +16,9 @@
 start(_Type, _Args) ->
     Workspace = determine_workspace(),
     lager:info("Devmode Workspace: ~p ~n", [Workspace]),
+    lager:info("---------->>> We are in process: ~p ~n", [self()]),
+    Lookup = ets: lookup(acc_gen_settings, generate_accounts),
+    lager:info("---------->>> ETS lookup? ~p ~n", [Lookup]),
     {ok, Pid} = aeplugin_dev_mode_sup:start_link(),
     ok = start_http_api(),
     {ok, Pid}.
@@ -44,12 +47,14 @@ determine_workspace() ->
 is_empty_dir(Dir) ->
     case file:list_dir_all(Dir) of
         {ok, []} -> true;
+        {error, _} -> true;
         _ -> false
     end.
          
 
 
 check_env() ->
+    set_acc_gen_start_settings(),
     case aeu_plugins:is_dev_mode() of
         true ->
             #{pubkey := Pub} = aecore_env:patron_keypair_for_testing(),
@@ -60,6 +65,23 @@ check_env() ->
             ok
     end,
     ok.
+
+set_acc_gen_start_settings() ->
+    case os:getenv("AE__CHAIN__DB_PATH") of
+        false -> ok;
+        Path -> 
+            case is_empty_dir(Path) of 
+                true ->
+                    lager:info("---------->>> Found empty workspace, telling devmode to generate Accounts ! ~p ~n", [placeholder]),
+                    lager:info("---------->>> We are in process: ~p ~n", [self()]),
+                    ets:new(acc_gen_settings, [set, named_table]),
+                    ets:insert(acc_gen_settings, {generate_accounts, true});
+                    %% TODO: Add further account creation options here, for now use default acc generating
+                false -> 
+                    ok
+            end
+    end.
+
 
 start_http_api() ->
     Port = get_http_api_port(),
