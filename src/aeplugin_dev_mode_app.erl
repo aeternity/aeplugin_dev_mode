@@ -148,7 +148,7 @@ maybe_generate_accounts(Workspace) ->
                     
                     AccountsJSON = 
                             try jsx:encode(AccountsList) of
-                                List when is_list(List) -> List
+                                JSON -> JSON
                             catch
                                 error:_ ->
                                     erlang:error(failed_jsonencoding_generated_devmode_accounts)
