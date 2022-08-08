@@ -35,7 +35,7 @@ to_all_formats(ListOfDerivedKeys, Balance) ->
 
     TupleList = lists:map(fun(D) -> 
         #{pub_key := Public} = eaex10:private_to_public(D),    
-        {aeser_api_encoder:encode(account_pubkey, Public), list_to_binary(integer_to_list(Balance))} 
+        {aeser_api_encoder:encode(account_pubkey, Public), Balance} 
             end,
         ListOfDerivedKeys),
     NodeFormat = maps:from_list(TupleList),
