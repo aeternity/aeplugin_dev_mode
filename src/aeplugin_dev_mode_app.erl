@@ -92,18 +92,26 @@ check_env() ->
     Workspace = determine_workspace(),
     Accs = maybe_generate_accounts(Workspace),
 
-
-
-    case aeu_plugins:is_dev_mode() of
+    case  aeu_plugins:is_dev_mode() and (Accs =/= not_found) of
         true ->
-            #{pubkey := Pub} = aecore_env:patron_keypair_for_testing(),
+            #{devmodeFormat := NodeFormatAccList} = Accs,
+            {Pub, _} = lists:nth(1, NodeFormatAccList),
             EncPubkey = aeser_api_encoder:encode(account_pubkey, Pub),
             aeu_plugins:suggest_config([<<"mining">>, <<"beneficiary">>], EncPubkey),
             aeu_plugins:suggest_config([<<"mining">>, <<"beneficiary_reward_delay">>], 2);
         false ->
-            ok
+            case aeu_plugins:is_dev_mode() of
+                 true ->
+                    #{pubkey := Pub} = aecore_env:patron_keypair_for_testing(),
+                    EncPubkey = aeser_api_encoder:encode(account_pubkey, Pub),
+                    aeu_plugins:suggest_config([<<"mining">>, <<"beneficiary">>], EncPubkey),
+                    aeu_plugins:suggest_config([<<"mining">>, <<"beneficiary_reward_delay">>], 2);
+                 false ->
+                    ok
+            end
     end,
-    ok.
+    ok.    
+
 
 % Tried to create an everlasting ETS table to circumvent the unavailability of module
 % 's in Ulf's lifecycle hook functions, the child process that the ETS ownership was handed
