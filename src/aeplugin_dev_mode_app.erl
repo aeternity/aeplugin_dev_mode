@@ -46,6 +46,15 @@ try_reading_prefunded_accounts() ->
     end.
         
 start_phase(check_config, _Type, _Args) ->
+    case aeu_env:user_config([<<"system">>, <<"dev_mode_accounts">>]) of
+        undefined -> io:fwrite("---------->>> Damn, couldn't read from config. ~n");
+        {ok, Accs} -> 
+                % Due to some weird quirk, the setting is returned as a tagged tuple instead of a map and needs to be
+                % converted to a map again.
+            % Todo: convert inner tagged tuples to maps !
+                aeplugin_dev_mode_emitter:set_prefilled_accounts_info(maps:from_list(Accs))
+    end,
+
     case aeu_plugins:check_config(?PLUGIN_NAME_STR, ?SCHEMA_FNAME, ?OS_ENV_PFX) of
         Config when is_map(Config) ->
             apply_config(Config);
@@ -98,14 +107,25 @@ check_env() ->
             {Pub, _} = lists:nth(1, NodeFormatAccList),
             EncPubkey = aeser_api_encoder:encode(account_pubkey, Pub),
             aeu_plugins:suggest_config([<<"mining">>, <<"beneficiary">>], EncPubkey),
-            aeu_plugins:suggest_config([<<"mining">>, <<"beneficiary_reward_delay">>], 2);
+            aeu_plugins:suggest_config([<<"mining">>, <<"beneficiary_reward_delay">>], 2),
+            % #{devmodeFormat:= OnlyDevmode} = Accs,
+            % aeu_plugins:suggest_config([<<"system">>, <<"dev_mode_accounts">>], jsx:encode(OnlyDevmode)); % TODO: put whole list 
+            
+            lager:info("---------->>> Writing to config. Is accs a map? ~p ~n", [is_map(Accs)]),
+            aeu_plugins:suggest_config([<<"system">>, <<"dev_mode_accounts">>], Accs); 
         false ->
             case aeu_plugins:is_dev_mode() of
                  true ->
+                    % if it's devmode and there are no accounts found, it can only be a synced node or
+                    % one that has a DB with the previous hardcoded test keypair. Figuring out this last case is not 
+                    % worth the time, let's assume !accounts => synced node, and set the prefilled accounts as empty.
                     #{pubkey := Pub} = aecore_env:patron_keypair_for_testing(),
                     EncPubkey = aeser_api_encoder:encode(account_pubkey, Pub),
                     aeu_plugins:suggest_config([<<"mining">>, <<"beneficiary">>], EncPubkey),
-                    aeu_plugins:suggest_config([<<"mining">>, <<"beneficiary_reward_delay">>], 2);
+                    aeu_plugins:suggest_config([<<"mining">>, <<"beneficiary_reward_delay">>], 2),
+                    aeu_plugins:suggest_config([<<"system">>, <<"dev_mode_accounts">>], #{readableFormat => [], 
+                                                                                            devmodeFormat => [], 
+                                                                                            nodeFormat => []}); 
                  false ->
                     ok
             end
@@ -183,7 +203,7 @@ maybe_generate_accounts(Workspace) ->
                     case try_reading_prefunded_accounts() of
                         % somebody loaded up a DB from a mainnet sync or something.
                         not_found -> not_found;
-                % Existing accounts josn found, return.
+                % Existing accounts json found, return.
                         FoundAccounts when is_map(FoundAccounts) -> FoundAccounts
                     end
             end

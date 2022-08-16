@@ -17,6 +17,11 @@
             "type" : "boolean",
             "default" : false,
             "help" : "Emit microblocks as soon as transactions have been pushed to the mempool"
+        },
+        "prefunded_accounts" : {
+            "description" : "When not using a synced Chain Database, devmode gives you a set of prefunded accounts",
+            "type" : "array",
+            "default" : []
         }
     }
 }

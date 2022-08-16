@@ -109,9 +109,10 @@ balances_json() ->
         end, Balances).
 
 devmode_accounts() ->
-    [#{<<"public_key">> => aeser_api_encoder:encode(account_pubkey, PubK),
-       <<"private_key">> => hexlify(PrivK)}
-     || {PubK,PrivK} <- demo_keypairs()].
+    aeplugin_dev_mode_emitter:get_prefilled_accounts_info().
+    % [#{<<"public_key">> => aeser_api_encoder:encode(account_pubkey, PubK),
+    %    <<"private_key">> => hexlify(PrivK)}
+    %  || {PubK,PrivK} <- demo_keypairs()].
 
 account_balances() ->
     {ok, Trees} = aec_chain:get_block_state(aec_chain:top_block_hash()),
@@ -250,6 +251,8 @@ serve_request(#{path := <<"/spend">>, qs := Qs}) ->
             {error, unknown_account}
     end;
 serve_request(#{path := <<"/status">>}) ->
+    #{readableFormat := PrefundedAccs} = devmode_accounts(),
+    io:fwrite("---------->>> Einfach devmode accounts sind: ~p ~n", [devmode_accounts()]),
     #{
       <<"devmode_settings">> =>
           #{
@@ -264,7 +267,7 @@ serve_request(#{path := <<"/status">>}) ->
             <<"mempool_height">> => aec_tx_pool:size(),
             <<"all_balances">> => balances_json()
            },
-      <<"accounts">> => devmode_accounts()
+      <<"accounts">> => PrefundedAccs
      };
 serve_request(#{path := <<"/rollback">>, qs := Qs}) ->
     OldHeight = aec_chain:top_height(),

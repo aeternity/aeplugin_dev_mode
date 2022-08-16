@@ -17,6 +17,8 @@
         , get_keyblock_interval/0
         , get_microblock_interval/0
         , get_auto_emit_microblocks/0
+        , set_prefilled_accounts_info/1
+        , get_prefilled_accounts_info/0
         ]).
 
 -export([ init/1
@@ -27,6 +29,7 @@
         , code_change/3 ]).
 
 -record(st, { keyblock_interval = 0
+            , prefilled_accounts_info = []
             , kb_tref
             , microblock_interval = 0
             , mb_tref
@@ -38,6 +41,9 @@ start_link() ->
 emit_keyblocks(N) when is_integer(N), N > 0 ->
     gen_server:call(?MODULE, {emit_keyblocks, N}).
 
+set_prefilled_accounts_info(Accs) ->
+    gen_server:call(?MODULE, {set_prefilled_accounts_info, Accs}).
+
 set_keyblock_interval(I) when is_integer(I), I >= 0 ->
     gen_server:call(?MODULE, {set_keyblock_interval, I}).
 
@@ -46,6 +52,9 @@ set_microblock_interval(I) when is_integer(I), I >= 0 ->
 
 auto_emit_microblocks(Bool) when is_boolean(Bool) ->
     gen_server:call(?MODULE, {auto_emit_microblocks, Bool}).
+
+get_prefilled_accounts_info() ->
+    gen_server:call(?MODULE, get_prefilled_accounts_info).
 
 get_keyblock_interval() ->
     gen_server:call(?MODULE, get_keyblock_interval).
@@ -76,6 +85,10 @@ init([]) ->
     end,
     {ok, #st{}}.
 
+handle_call({set_prefilled_accounts_info, Accs}, _From, St) ->
+    St1 = St#st{prefilled_accounts_info = Accs},
+    {reply, ok, St1};
+
 handle_call({set_keyblock_interval, I}, _From, St) ->
     case I of
         _ when is_integer(I), I >= 0 ->
@@ -100,6 +113,9 @@ handle_call({auto_emit_microblocks, Bool}, _From, St) ->
         _ ->
             {reply, {error, invalid}, St}
     end;
+
+handle_call(get_prefilled_accounts_info, _From, #st{prefilled_accounts_info = Accs} = St) ->
+    {reply, Accs, St};
 handle_call(get_keyblock_interval, _From, #st{keyblock_interval = I} = St) ->
     {reply, I, St};
 handle_call(get_microblock_interval, _From, #st{microblock_interval = I} = St) ->
