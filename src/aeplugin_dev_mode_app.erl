@@ -18,10 +18,33 @@ start(_Type, _Args) ->
     % lager:info("Devmode Workspace: ~p ~n", [Workspace]),
     % Lookup = ets:lookup(acc_gen_settings, generate_accounts),
     % lager:info("---------->>> ETS lookup? ~p ~n", [Lookup]),
+
+    % check_for_prefunded_accounts(),
     {ok, Pid} = aeplugin_dev_mode_sup:start_link(),
     ok = start_http_api(),
     {ok, Pid}.
 
+
+% check_for_prefunded_accounts() ->
+%     % Save to ets table if present, set empty value if not available.
+%     AccountData = case try_reading_prefunded_accounts() of
+%                 not_found -> not_defined;
+%                 Accs -> Accs
+%                end.
+
+%             Process account data and store it in ETS !
+
+
+try_reading_prefunded_accounts() ->
+    Workspace = lists:last(filename:split(os:getenv("AE__CHAIN__DB_PATH"))),
+    io:fwrite("---------->>> Workspace: ~p ~n", [Workspace]),        
+    FilePath = filename:join(os:getenv("AE__CHAIN__DB_PATH"), "devmode_accs_" ++ Workspace ++ ".json"),
+    io:fwrite("---------->>> Final calculated accounts file path: ~p ~n", [FilePath]),
+    case file:read_file(FilePath) of
+        {ok, Accs} -> Accs;
+        {error, _} -> not_found
+    end.
+        
 start_phase(check_config, _Type, _Args) ->
     case aeu_plugins:check_config(?PLUGIN_NAME_STR, ?SCHEMA_FNAME, ?OS_ENV_PFX) of
         Config when is_map(Config) ->
@@ -56,11 +79,12 @@ check_env() ->
     % set_acc_gen_start_settings(),
 
     %% make acc gen code available:
-    case os:getenv("AE__CHAIN__DB_PATH") of
-        false -> ok;
-        Path ->
-            code:add_patha(Path)
-    end,
+% TODO: check if this is necessary
+    % case os:getenv("AE__CHAIN__DB_PATH") of
+    %     false -> ok;
+    %     Path ->
+    %         code:add_patha(Path)
+    % end,
 
     Seed = ebip39:mnemonic_to_seed(ebip39:generate_mnemonic(128), <<"">>),
     lager:info("===================>>>> seed? ~p ~n", [Seed]),
