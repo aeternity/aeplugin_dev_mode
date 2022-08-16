@@ -90,7 +90,7 @@ check_env() ->
     % lager:info("===================>>>> seed? ~p ~n", [Seed]),
 
     Workspace = determine_workspace(),
-    maybe_generate_accounts(Workspace),
+    Accs = maybe_generate_accounts(Workspace),
 
 
 
@@ -140,11 +140,12 @@ check_env() ->
 maybe_generate_accounts(Workspace) ->
     %% A CLI tool will provide a DB path representing either a work space, or some existing database (maybe for the sake of using some synced node data)
     %% So here we check whether that DB path already has any data present. if not, it's a new workspace and we generate accounts. the node later looks 
-    %% for that file when in devmode and, if present uses it instead of its hardcoded accounts json.
+    %% for that file if in devmode and, if present, uses it instead of its hardcoded accounts json.
     case os:getenv("AE__CHAIN__DB_PATH") of
         false -> ok;
         Path -> 
             case is_empty_dir(Path) of 
+                % no accounts present, generate new json file.
                 true ->
                     lager:info("---------->>> Found empty workspace, generating Accounts !"),
                     %% TODO: Add further account creation options here, for now use default acc generating
@@ -169,7 +170,14 @@ maybe_generate_accounts(Workspace) ->
                     lager:info("---------->>> Writing accounts file to: ~p ~n", [JSONfilePath]),
                     file:write(File, AccountsJSON),
                     AccountsList;
-                false -> ok
+                false -> 
+                    % accounts could be present, check.
+                    case try_reading_prefunded_accounts() of
+                        % somebody loaded up a DB from a mainnet sync or something.
+                        not_found -> not_found;
+                % Existing accounts josn found, return.
+                        FoundAccounts when is_map(FoundAccounts) -> FoundAccounts
+                    end
             end
     end.
 
