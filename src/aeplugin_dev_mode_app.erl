@@ -38,12 +38,37 @@ start(_Type, _Args) ->
 try_reading_prefunded_accounts() ->
     Workspace = lists:last(filename:split(os:getenv("AE__CHAIN__DB_PATH"))),
     io:fwrite("---------->>> Workspace: ~p ~n", [Workspace]),        
-    FilePath = filename:join(os:getenv("AE__CHAIN__DB_PATH"), "devmode_accs_" ++ Workspace ++ ".json"),
+    FilePath = filename:join(os:getenv("AE__CHAIN__DB_PATH"), "devmode_prefunded_accs_" ++ Workspace ++ ".json"),
+    KeyFilePath = filename:join(os:getenv("AE__CHAIN__DB_PATH"), "devmode_acc_keys_" ++ Workspace ++ ".json"),
+
     io:fwrite("---------->>> Final calculated accounts file path: ~p ~n", [FilePath]),
-    case file:read_file(FilePath) of
-        {ok, Accs} -> Accs;
-        {error, _} -> not_found
-    end.
+    
+    NodeFormat = case file:read_file(FilePath) of
+                    {ok, Accs} -> 
+                            io:fwrite("Node format read from drive, json decoded: ~p ~n", [jsx:decode(Accs)]),    
+                            maps:from_list(jsx:decode(Accs));
+                    {error, _} -> not_found
+                 end,
+    
+    {Readable, Devmode} = case file:read_file(KeyFilePath) of
+                                    {ok, KeyAccs} -> 
+                                            Decoded = maps:from_list(jsx:decode(KeyAccs)),
+                                            % io:fwrite("---------->>>Decoded from harddrive?? ~p ~n", [Decoded]),
+                                            
+                                            #{ <<"readableFormat">> := DecodedReadableFormat} = Decoded,
+                                            
+                                            #{ <<"devmodeFormat">> := DecodedDevmodeFormat} = Decoded,
+                                            % io:fwrite("Decoded devmode format: ~p ~n", [DecodedDevmodeFormat]),       
+                                            
+                                            ListOfMaps = [maps:from_list(OneAcc) || [{_ , OneAcc}] <- DecodedReadableFormat],
+                                            % io:fwrite("---------->>> Devmode keys as List of maps: ~p ~n", [ListOfMaps]),
+                                            {ListOfMaps, DecodedDevmodeFormat};
+                                    {error, _} -> not_found
+                                end,
+  
+    #{nodeFormat => NodeFormat,
+       readableFormat => Readable,
+       devmodeFormat => Devmode}.
         
 start_phase(check_config, _Type, _Args) ->
     case aeu_env:user_config([<<"system">>, <<"dev_mode_accounts">>]) of
@@ -53,18 +78,21 @@ start_phase(check_config, _Type, _Args) ->
                 % Due to some weird quirk, the setting is not returned as a list of maps as it was stored,
                 % but tagged tuples and lists etc. Here it is brought in shape again.
         BasicMap = maps:from_list(Accs),
-        io:fwrite("---------->>> Basic map: ~p ~n", [BasicMap]),
         #{readableFormat := Readable} = BasicMap,
         #{nodeFormat := Node} = BasicMap,
         #{devmodeFormat := Devmode} = BasicMap,
         io:fwrite("---------->>> Only Readable: : ~p ~n", [Readable]),
-        
-        FixedReadable = [maps:from_list(OneReadable) || {_, OneReadable} <- Readable],
+        % check if removal of numeration is necessary
+        FixedReadable = case Readable of 
+                                [{1,_}|_] -> [maps:from_list(OneReadable) || {_, OneReadable} <- Readable];
+                                _ -> Readable
+                            end,
+        % FixedReadable = [maps:from_list(OneReadable) || {_, OneReadable} <- Readable],
         FixedNode = maps:from_list(Node),
-                aeplugin_dev_mode_emitter:set_prefilled_accounts_info(#{
-                                                                         nodeFormat => FixedNode,
-                                                                         readableFormat => FixedReadable,
-                                                                         devmodeFormat => Devmode})
+        aeplugin_dev_mode_emitter:set_prefilled_accounts_info(#{
+                                                                nodeFormat => FixedNode,
+                                                                readableFormat => FixedReadable,
+                                                                devmodeFormat => Devmode})
     end,
 
     case aeu_plugins:check_config(?PLUGIN_NAME_STR, ?SCHEMA_FNAME, ?OS_ENV_PFX) of
@@ -113,17 +141,22 @@ check_env() ->
     Workspace = determine_workspace(),
     Accs = maybe_generate_accounts(Workspace),
 
+    lager:info("---------->>> Got passed following accs: ~p ~n", [Accs])
+    ,
     case  aeu_plugins:is_dev_mode() and (Accs =/= not_found) of
         true ->
-            #{devmodeFormat := NodeFormatAccList} = Accs,
-            {Pub, _} = lists:nth(1, NodeFormatAccList),
+
+            #{devmodeFormat := DevmodeFormatAccList} = Accs,
+            {Pub, Priv} = lists:nth(1, DevmodeFormatAccList),
+            lager:info("---------->>> Pub and priv are : ~p ~n", [Pub]),
             EncPubkey = aeser_api_encoder:encode(account_pubkey, Pub),
-            aeu_plugins:suggest_config([<<"mining">>, <<"beneficiary">>], EncPubkey),
+            lager:info("---------->>> Pubkey encoded like : ~p ~n", [EncPubkey]),
+
+            aeu_plugins:suggest_config([<<"mining">>, <<"beneficiary">>], <<"ak_2uKv5p1udex76mkpe6sPQfpmvSb6ShRxikWi2LPErUP16VfvsJ">>),
             aeu_plugins:suggest_config([<<"mining">>, <<"beneficiary_reward_delay">>], 2),
             % #{devmodeFormat:= OnlyDevmode} = Accs,
             % aeu_plugins:suggest_config([<<"system">>, <<"dev_mode_accounts">>], jsx:encode(OnlyDevmode)); % TODO: put whole list 
             
-            lager:info("---------->>> Writing to config. Is accs a map? ~p ~n", [is_map(Accs)]),
             aeu_plugins:suggest_config([<<"system">>, <<"dev_mode_accounts">>], Accs); 
         false ->
             case aeu_plugins:is_dev_mode() of
@@ -198,6 +231,8 @@ maybe_generate_accounts(Workspace) ->
                             end,
                     
                     #{nodeFormat := AccountsInNodeFormat} = AccountsList,
+                    #{readableFormat := AccountsInReadableFormat} = AccountsList,
+                    #{devmodeFormat := AccountsInDevmodeFormat} = AccountsList,
                     AccountsJSON = 
                             try jsx:encode(AccountsInNodeFormat) of
                                 JSON -> JSON
@@ -205,11 +240,45 @@ maybe_generate_accounts(Workspace) ->
                                 error:_ ->
                                     erlang:error(failed_jsonencoding_generated_devmode_accounts)
                             end,
-                    JSONfilePath = filename:join(Path, "devmode_accs_" ++ Workspace ++ ".json"),
+
+                    % save the list of account addresses for the node to prefund
+                    JSONfilePath = filename:join(Path, "devmode_prefunded_accs_" ++ Workspace ++ ".json"),
                     {ok, File} = file:open(JSONfilePath, [write]),
                     lager:info("---------->>> Writing accounts file to: ~p ~n", [JSONfilePath]),
                     file:write(File, AccountsJSON),
-                    AccountsList;
+
+                            % save the keys of the accounts for devmode
+                    KeysJSON = 
+                        try jsx:encode(#{ readableFormat => AccountsInReadableFormat, devmodeFormat => AccountsInDevmodeFormat}) of
+                            KJSON -> KJSON
+                        catch
+                            error:_ ->
+                                erlang:error(failed_jsonencoding_generated_devmode_keys)
+                        end,
+
+                    % save the account keys for devmode to pick up later
+                    KeysJSONfilePath = filename:join(Path, "devmode_acc_keys_" ++ Workspace ++ ".json"),
+                    {ok, AccountsFile} = file:open(KeysJSONfilePath, [write]),
+                    lager:info("---------->>> Keys JSON ~p ~n", [KeysJSON]),
+                    lager:info("---------->>> Keys raw: ~p ~n", [AccountsInDevmodeFormat]),
+                    file:write(AccountsFile, KeysJSON),
+
+                    lager:info("---------->>> Passed accounts list is: ~p ~n", [AccountsList]),
+                     % fallback:
+                     AccountsList;   
+                      
+                    %%TODO:  This is just for removing unnecessary enumeration in the readableFormat, eventually needed later.
+
+                    % % lager:info("---------->>> AccountsInReadableFormat: ~p ~n", [AccountsInReadableFormat]),
+                    % FlattenedReadableFormat = lists:map(fun(Account) -> 
+                    %         [{ _, AccountMap}] = maps:to_list(Account),
+                    %             AccountMap
+                    %     end, AccountsInReadableFormat),
+                    % % [OneAcc || [{_ , OneAcc}] <- AccountsInReadableFormat], 
+                    % lager:info("---------->>> FlattenedReadableFormat: ~p ~n", [FlattenedReadableFormat]),
+
+                    
+                    % maps:update(readableFormat, FlattenedReadableFormat, AccountsList);
                 false -> 
                     % accounts could be present, check.
                     case try_reading_prefunded_accounts() of
