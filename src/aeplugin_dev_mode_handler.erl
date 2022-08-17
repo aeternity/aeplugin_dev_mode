@@ -267,7 +267,7 @@ serve_request(#{path := <<"/status">>}) ->
             <<"mempool_height">> => aec_tx_pool:size(),
             <<"all_balances">> => balances_json()
            },
-      <<"accounts">> => PrefundedAccs
+      <<"prefunded_accounts">> => PrefundedAccs
      };
 serve_request(#{path := <<"/rollback">>, qs := Qs}) ->
     OldHeight = aec_chain:top_height(),

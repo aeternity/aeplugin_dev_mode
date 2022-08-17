@@ -7,7 +7,7 @@ generate_from_mnemonic(Mnemonic, Quantity, Balance) ->
     to_all_formats(Derived, Balance).
 
 generate_accounts() ->
-    generate_accounts(2, 10000000000000000000000000000000).
+    generate_accounts(10, 10000000000000000000000000000000).
     
     generate_accounts(Quantity, Balance) ->
     Mnemonic = ebip39:generate_mnemonic(128),
@@ -19,13 +19,19 @@ derive_from_seed(Seed, Quantity) ->
 
 %% the node, the devmode internals and the devmode's public data need different formats of the account data. combining at least the latter 2 might be worked on next.
 to_all_formats(ListOfDerivedKeys, Balance) ->
-    ReadableFormat = lists:map(fun(D) -> 
+    UncountedReadableFormat = lists:map(fun(D) -> 
         #{pub_key := Public, priv_key := Private} = eaex10:private_to_public(D),    
         #{pub_key => binary_to_atom(aeser_api_encoder:encode(account_pubkey, Public)),
-             priv_key => binary_to_atom(hexlify(<<Private/binary, Public/binary>>)), 
-             balance => Balance } 
-            end,
+        priv_key => binary_to_atom(hexlify(<<Private/binary, Public/binary>>)), 
+        initial_balance => Balance } 
+        end,
         ListOfDerivedKeys),
+
+    io:fwrite("---> UncountedReadableFormat: ~p ~n", [UncountedReadableFormat]),
+
+    ReadableFormat = enumerate(UncountedReadableFormat, [], 1),
+    io:fwrite("---> ReadableFormatEnumerated: ~p ~n", [ReadableFormat]),
+
 
     DevmodeFormat = lists:map(fun(D) -> 
         #{pub_key := Public, priv_key := Private} = eaex10:private_to_public(D),    
@@ -51,3 +57,10 @@ hexlify(Bin) when is_binary(Bin) ->
 
 hex(C) when C < 10 -> $0 + C;
 hex(C) -> $a + C - 10.
+
+enumerate([], Acc, _) ->
+    Acc;
+
+enumerate([H|T], Acc, Count) ->
+    NewAcc = Acc ++ [#{ Count => H}],
+    enumerate(T, NewAcc, Count + 1).

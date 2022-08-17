@@ -49,10 +49,22 @@ start_phase(check_config, _Type, _Args) ->
     case aeu_env:user_config([<<"system">>, <<"dev_mode_accounts">>]) of
         undefined -> io:fwrite("---------->>> Damn, couldn't read from config. ~n");
         {ok, Accs} -> 
-                % Due to some weird quirk, the setting is returned as a tagged tuple instead of a map and needs to be
-                % converted to a map again.
-            % Todo: convert inner tagged tuples to maps !
-                aeplugin_dev_mode_emitter:set_prefilled_accounts_info(maps:from_list(Accs))
+                io:fwrite("---------->>> Read accounts from settings : ~p ~n", [Accs]),
+                % Due to some weird quirk, the setting is not returned as a list of maps as it was stored,
+                % but tagged tuples and lists etc. Here it is brought in shape again.
+        BasicMap = maps:from_list(Accs),
+        io:fwrite("---------->>> Basic map: ~p ~n", [BasicMap]),
+        #{readableFormat := Readable} = BasicMap,
+        #{nodeFormat := Node} = BasicMap,
+        #{devmodeFormat := Devmode} = BasicMap,
+        io:fwrite("---------->>> Only Readable: : ~p ~n", [Readable]),
+        
+        FixedReadable = [maps:from_list(OneReadable) || {_, OneReadable} <- Readable],
+        FixedNode = maps:from_list(Node),
+                aeplugin_dev_mode_emitter:set_prefilled_accounts_info(#{
+                                                                         nodeFormat => FixedNode,
+                                                                         readableFormat => FixedReadable,
+                                                                         devmodeFormat => Devmode})
     end,
 
     case aeu_plugins:check_config(?PLUGIN_NAME_STR, ?SCHEMA_FNAME, ?OS_ENV_PFX) of
