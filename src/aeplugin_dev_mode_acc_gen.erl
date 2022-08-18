@@ -9,7 +9,7 @@ generate_from_mnemonic(Mnemonic, Quantity, Balance) ->
     to_all_formats(Derived, Balance).
 
 generate_accounts() ->
-    generate_accounts(2, 10000000000000000000000000000000).
+    generate_accounts(10, 10000000000000000000000000000000).
     
     generate_accounts(Quantity, Balance) ->
     Mnemonic = ebip39:generate_mnemonic(128),
