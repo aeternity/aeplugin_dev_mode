@@ -91,7 +91,7 @@ start_phase(check_config, _Type, _Args) ->
         % check if removal of numeration is necessary
             FixedReadable = case Readable of 
                                     [{1,_}|_] -> io:fwrite("---------->>> Applying fix"), [maps:from_list(OneReadable) || {_, OneReadable} <- Readable];
-                                    [{<<"1">>,_}|_] -> io:fwrite("---------->>> Applying fix"), [maps:from_list(OneReadable) || {_, OneReadable} <- Readable];
+                                    [{<<"1">>,_}|_] -> io:fwrite("---------->>> Applying string fix"), [maps:from_list(OneReadable) || {_, OneReadable} <- Readable];
                                     _ -> Readable
                                 end,
             % FixedReadable = [maps:from_list(OneReadable) || {_, OneReadable} <- Readable],
@@ -154,14 +154,30 @@ check_env() ->
     case  aeu_plugins:is_dev_mode() and (Accs =/= not_found) of
         true ->
 
-            #{devmodeFormat := DevmodeFormatAccList} = Accs,
-            {Pub, Priv} = lists:nth(1, DevmodeFormatAccList),
-            lager:info("---------->>> Pub and priv are : ~p ~n", [Pub]),
-            EncPubkey = aeser_api_encoder:encode(account_pubkey, Pub),
-            lager:info("---------->>> Pubkey encoded like : ~p ~n", [EncPubkey]),
+            #{readableFormat := ReadableFormat} = Accs,
+            lager:info("---------->>> Got passed this readable: ~p ~n", [ReadableFormat]),
+            Pub = case ReadableFormat of
+                [[{<<"1">>, Tuples} | _] | _ ] ->
+                    lager:info("---------->>> Inside the longer one."),
+                    PropMap = maps:from_list(Tuples),
+                    #{<<"pub_key">> := PubKey} = PropMap,
+                    lager:info("---------->>> Found this pubkey: ~p ~n", [PubKey]),
+                    PubKey;
+                [ #{1 := #{ pub_key := PubKey}} | _] ->
+                    atom_to_binary(PubKey)
+            end, 
+
+            % #{pub_key := Pub} = lists:nth(1, ReadableFormat),
+            
+            % lager:info("---------->>> Setting this pub as mining beneficiary : ~p ~n", [Pub]),
+
+            % EncPubkey = aeser_api_encoder:encode(account_pubkey, Pub),
+            % lager:info("---------->>> Pubkey encoded like : ~p ~n", [EncPubkey]),
+            lager:info("Setting the first devmode account as mining beneficiary: ~p ~n", [Pub]),
 
             %TODO: make dynamic !
-            aeu_plugins:suggest_config([<<"mining">>, <<"beneficiary">>], <<"ak_2uKv5p1udex76mkpe6sPQfpmvSb6ShRxikWi2LPErUP16VfvsJ">>),
+            % aeu_plugins:suggest_config([<<"mining">>, <<"beneficiary">>], <<Pub>>),
+            aeu_plugins:suggest_config([<<"mining">>, <<"beneficiary">>], Pub),
             aeu_plugins:suggest_config([<<"mining">>, <<"beneficiary_reward_delay">>], 2),
             % #{devmodeFormat:= OnlyDevmode} = Accs,
             % aeu_plugins:suggest_config([<<"system">>, <<"dev_mode_accounts">>], jsx:encode(OnlyDevmode)); % TODO: put whole list 
