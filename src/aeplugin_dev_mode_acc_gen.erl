@@ -1,6 +1,8 @@
 -module(aeplugin_dev_mode_acc_gen).
 -export([generate_from_mnemonic/3, generate_accounts/2, generate_accounts/0]).
 
+%% Generates Accounts from sources like mnemonic and seed, utilising ebip39 and eaex10
+
 generate_from_mnemonic(Mnemonic, Quantity, Balance) ->
     Seed = ebip39:mnemonic_to_seed(Mnemonic, <<"">>),
     Derived = derive_from_seed(Seed, Quantity),
@@ -11,7 +13,6 @@ generate_accounts() ->
     
     generate_accounts(Quantity, Balance) ->
     Mnemonic = ebip39:generate_mnemonic(128),
-    % io:fwrite("------> Mnemonic: ~p ~n", [Mnemonic]),
     generate_from_mnemonic(Mnemonic, Quantity, Balance).
 
 derive_from_seed(Seed, Quantity) ->
@@ -27,12 +28,12 @@ to_all_formats(ListOfDerivedKeys, Balance) ->
         end,
         ListOfDerivedKeys),
 
-    io:fwrite("---> UncountedReadableFormat: ~p ~n", [UncountedReadableFormat]),
-
+    %% this numeration is added, because the node client's configuration storage alters the 
+    %% data structure of the stored data somewhere under the hood. The numeration is used to 
+    %% create a proper map again after reading the data from the configuration.
     ReadableFormat = enumerate(UncountedReadableFormat, [], 1),
-    io:fwrite("---> ReadableFormatEnumerated: ~p ~n", [ReadableFormat]),
 
-
+    %% Due to changes in the devmode, this format is currently not used, but might be useful for other applications.
     DevmodeFormat = lists:map(fun(D) -> 
         #{pub_key := Public, priv_key := Private} = eaex10:private_to_public(D),    
         {Public, <<Private/binary, Public/binary>>} 
@@ -45,8 +46,6 @@ to_all_formats(ListOfDerivedKeys, Balance) ->
             end,
         ListOfDerivedKeys),
     NodeFormat = maps:from_list(TupleList),
-    
-    io:fwrite("Node format is: ~p ~n", [NodeFormat]),
 
     #{readableFormat => ReadableFormat, 
         devmodeFormat => DevmodeFormat, 

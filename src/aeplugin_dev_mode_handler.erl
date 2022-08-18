@@ -110,9 +110,6 @@ balances_json() ->
 
 devmode_accounts() ->
     aeplugin_dev_mode_emitter:get_prefilled_accounts_info().
-    % [#{<<"public_key">> => aeser_api_encoder:encode(account_pubkey, PubK),
-    %    <<"private_key">> => hexlify(PrivK)}
-    %  || {PubK,PrivK} <- demo_keypairs()].
 
 account_balances() ->
     {ok, Trees} = aec_chain:get_block_state(aec_chain:top_block_hash()),
@@ -252,7 +249,6 @@ serve_request(#{path := <<"/spend">>, qs := Qs}) ->
     end;
 serve_request(#{path := <<"/status">>}) ->
     #{readableFormat := PrefundedAccs} = devmode_accounts(),
-    io:fwrite("---------->>> Einfach devmode accounts sind: ~p ~n", [devmode_accounts()]),
     #{
       <<"devmode_settings">> =>
           #{
@@ -359,7 +355,6 @@ privkey_if_demokey(Pub) ->
 min_gas_price() ->
     aec_tx_pool:minimum_miner_gas_price().
 
-%% [{Pubkey, Privkey}]
 demo_keypairs() ->
     [patron_keypair(),
      {<<34,211,105,168,28,63,144,218,27,148,69,230,108,203,60,
