@@ -53,16 +53,16 @@ try_reading_prefunded_accounts() ->
     {Readable, Devmode} = case file:read_file(KeyFilePath) of
                                     {ok, KeyAccs} -> 
                                             Decoded = maps:from_list(jsx:decode(KeyAccs)),
-                                            % io:fwrite("---------->>>Decoded from harddrive?? ~p ~n", [Decoded]),
+                                            io:fwrite("---------->>>Decoded from harddrive?? ~p ~n", [Decoded]),
                                             
+                                            % #{ <<"readableFormat">> := [DecodedReadableFormat | _]} = Decoded,
                                             #{ <<"readableFormat">> := DecodedReadableFormat} = Decoded,
                                             
                                             #{ <<"devmodeFormat">> := DecodedDevmodeFormat} = Decoded,
-                                            % io:fwrite("Decoded devmode format: ~p ~n", [DecodedDevmodeFormat]),       
-                                            
+                                             io:fwrite("Decoded readable format: ~p ~n", [DecodedReadableFormat]),  
                                             ListOfMaps = [maps:from_list(OneAcc) || [{_ , OneAcc}] <- DecodedReadableFormat],
-                                            % io:fwrite("---------->>> Devmode keys as List of maps: ~p ~n", [ListOfMaps]),
-                                            {ListOfMaps, DecodedDevmodeFormat};
+                                            io:fwrite("---------->>> Devmode keys as List of maps: ~p ~n", [ListOfMaps]),
+                                            {DecodedReadableFormat, DecodedDevmodeFormat};
                                     {error, _} -> not_found
                                 end,
   
@@ -72,7 +72,13 @@ try_reading_prefunded_accounts() ->
         
 start_phase(check_config, _Type, _Args) ->
     case aeu_env:user_config([<<"system">>, <<"dev_mode_accounts">>]) of
-        undefined -> io:fwrite("---------->>> Damn, couldn't read from config. ~n");
+        undefined -> 
+            %% In this case, we should be dealing with a pre-synced database and no prefunded accounts.
+            % Todo: This needs explicit testing
+            aeplugin_dev_mode_emitter:set_prefilled_accounts_info(#{
+                nodeFormat => [],
+                readableFormat => [],
+                devmodeFormat => []});
         {ok, Accs} -> 
                 io:fwrite("---------->>> Read accounts from settings : ~p ~n", [Accs]),
                 % Due to some weird quirk, the setting is not returned as a list of maps as it was stored,
@@ -81,18 +87,20 @@ start_phase(check_config, _Type, _Args) ->
         #{readableFormat := Readable} = BasicMap,
         #{nodeFormat := Node} = BasicMap,
         #{devmodeFormat := Devmode} = BasicMap,
-        io:fwrite("---------->>> Only Readable: : ~p ~n", [Readable]),
+        io:fwrite("---------->>> Only the readable from settings: ~p ~n", [Readable]),
         % check if removal of numeration is necessary
-        FixedReadable = case Readable of 
-                                [{1,_}|_] -> [maps:from_list(OneReadable) || {_, OneReadable} <- Readable];
-                                _ -> Readable
-                            end,
-        % FixedReadable = [maps:from_list(OneReadable) || {_, OneReadable} <- Readable],
-        FixedNode = maps:from_list(Node),
-        aeplugin_dev_mode_emitter:set_prefilled_accounts_info(#{
-                                                                nodeFormat => FixedNode,
-                                                                readableFormat => FixedReadable,
-                                                                devmodeFormat => Devmode})
+            FixedReadable = case Readable of 
+                                    [{1,_}|_] -> io:fwrite("---------->>> Applying fix"), [maps:from_list(OneReadable) || {_, OneReadable} <- Readable];
+                                    [{<<"1">>,_}|_] -> io:fwrite("---------->>> Applying fix"), [maps:from_list(OneReadable) || {_, OneReadable} <- Readable];
+                                    _ -> Readable
+                                end,
+            % FixedReadable = [maps:from_list(OneReadable) || {_, OneReadable} <- Readable],
+            FixedNode = maps:from_list(Node),
+            io:fwrite("---------->>> Fixed Readable: : ~p ~n", [FixedReadable]),
+            aeplugin_dev_mode_emitter:set_prefilled_accounts_info(#{
+                                                                    nodeFormat => FixedNode,
+                                                                    readableFormat => FixedReadable,
+                                                                    devmodeFormat => Devmode})
     end,
 
     case aeu_plugins:check_config(?PLUGIN_NAME_STR, ?SCHEMA_FNAME, ?OS_ENV_PFX) of
@@ -152,6 +160,7 @@ check_env() ->
             EncPubkey = aeser_api_encoder:encode(account_pubkey, Pub),
             lager:info("---------->>> Pubkey encoded like : ~p ~n", [EncPubkey]),
 
+            %TODO: make dynamic !
             aeu_plugins:suggest_config([<<"mining">>, <<"beneficiary">>], <<"ak_2uKv5p1udex76mkpe6sPQfpmvSb6ShRxikWi2LPErUP16VfvsJ">>),
             aeu_plugins:suggest_config([<<"mining">>, <<"beneficiary_reward_delay">>], 2),
             % #{devmodeFormat:= OnlyDevmode} = Accs,
