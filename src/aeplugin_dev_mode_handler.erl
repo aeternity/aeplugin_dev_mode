@@ -9,6 +9,9 @@
         , json_api/2
         ]).
 
+-export([ account_balances/0
+        , demo_keypairs/0 ]).
+
 -import(aeplugin_dev_mode_html, [html/1, meta/0]).
 
 routes() ->
