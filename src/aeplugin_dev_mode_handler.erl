@@ -31,10 +31,12 @@ init(Req, Opts) ->
 
 content_types_provided(Req, State) ->
     Result = serve_request(Req),
+    Req1 = cowboy_req:set_resp_header(<<"access-control-allow-methods">>, <<"GET, POST, OPTIONS">>, Req),
+    ReqCORS = cowboy_req:set_resp_header(<<"access-control-allow-origin">>, <<"*">>, Req1),
     {[
        {<<"text/html">>, index_html},
        {<<"application/json">>, json_api}
-     ], Req#{'$result' => Result}, State}.
+     ], ReqCORS#{'$result' => Result}, State}.
 
 json_api(#{'$result' := Result, qs := Qs} = Req, State) ->
     Response0 = case Result of
