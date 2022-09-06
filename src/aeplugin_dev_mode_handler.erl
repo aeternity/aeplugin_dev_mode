@@ -107,7 +107,7 @@ balances_json() ->
     lists:map(
         fun({K, V}) ->
                 EncKey = aeser_api_encoder:encode(account_pubkey, K),
-                #{<<"public_key">> => EncKey, <<"balance">> => V }
+                #{<<"pub_key">> => EncKey, <<"balance">> => V }
         end, Balances).
 
 devmode_accounts() ->
