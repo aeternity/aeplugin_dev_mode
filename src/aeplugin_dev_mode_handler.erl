@@ -107,7 +107,7 @@ balances_json() ->
     lists:map(
         fun({K, V}) ->
                 EncKey = aeser_api_encoder:encode(account_pubkey, K),
-                #{<<"pub_key">> => EncKey, <<"balance">> => V }
+                #{<<"pub_key">> => EncKey, <<"balance">> => list_to_atom(integer_to_list(V)) }
         end, Balances).
 
 devmode_accounts() ->

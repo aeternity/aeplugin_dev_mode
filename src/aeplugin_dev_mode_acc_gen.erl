@@ -24,7 +24,7 @@ to_all_formats(ListOfDerivedKeys, Balance) ->
         #{pub_key := Public, priv_key := Private} = eaex10:private_to_public(D),    
         #{pub_key => binary_to_atom(aeser_api_encoder:encode(account_pubkey, Public)),
         priv_key => binary_to_atom(hexlify(<<Private/binary, Public/binary>>)), 
-        initial_balance => Balance } 
+        initial_balance => list_to_atom(integer_to_list(Balance)) } 
         end,
         ListOfDerivedKeys),
 
