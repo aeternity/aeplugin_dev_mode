@@ -1,4 +1,4 @@
-FROM aeternity/builder:1804 as pluginbuild
+FROM aeternity/builder:bionic-otp23 as pluginbuild
 ADD rebar.config rebar.lock rebar.config.script /aeplugin_dev_mode/
 ADD src /aeplugin_dev_mode/src/
 
