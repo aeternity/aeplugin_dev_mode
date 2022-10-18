@@ -123,8 +123,7 @@ check_env() ->
 
             lager:info("Setting the first devmode account as mining beneficiary: ~p ~n", [Pub]),
             aeu_plugins:suggest_config([<<"mining">>, <<"beneficiary">>], Pub),
-            aeu_plugins:suggest_config([<<"mining">>, <<"beneficiary_reward_delay">>], 2),
-            aeu_plugins:suggest_config([<<"system">>, <<"dev_mode_accounts">>], Accs); 
+            aeu_plugins:suggest_config([<<"mining">>, <<"beneficiary_reward_delay">>], 2);
         false ->
             case aeu_plugins:is_dev_mode() of
                  true ->
@@ -135,10 +134,7 @@ check_env() ->
                     #{pubkey := Pub} = aecore_env:patron_keypair_for_testing(),
                     EncPubkey = aeser_api_encoder:encode(account_pubkey, Pub),
                     aeu_plugins:suggest_config([<<"mining">>, <<"beneficiary">>], EncPubkey),
-                    aeu_plugins:suggest_config([<<"mining">>, <<"beneficiary_reward_delay">>], 2),
-                    aeu_plugins:suggest_config([<<"system">>, <<"dev_mode_accounts">>], #{readableFormat => [], 
-                                                                                            devmodeFormat => [], 
-                                                                                            nodeFormat => []}); 
+                    aeu_plugins:suggest_config([<<"mining">>, <<"beneficiary_reward_delay">>], 2);
                  false ->
                     ok
             end
