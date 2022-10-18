@@ -5,7 +5,7 @@
   {registered, []},
   {mod, {aeplugin_dev_mode_app, []}},
   {start_phases, [{check_config, []}]},
-  {applications, [kernel, stdlib, aecore]},
+  {applications, [kernel, stdlib, aecore, ebip39, eaex10, epbkdf2, ec_utils]},
   {env,
    [{'$setup_hooks',
      [{normal,
