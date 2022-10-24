@@ -19,18 +19,17 @@ start(_Type, _Args) ->
     {ok, Pid}.
 
 
-try_reading_prefunded_accounts() ->
-    Workspace = lists:last(filename:split(os:getenv("AE__CHAIN__DB_PATH"))),
-    lager:info("Devmode Project workspace set to: ~p ~n", [os:getenv("AE__CHAIN__DB_PATH")]),
-    FilePath = filename:join(os:getenv("AE__CHAIN__DB_PATH"), "devmode_prefunded_accs_" ++ Workspace ++ ".json"),
-    KeyFilePath = filename:join(os:getenv("AE__CHAIN__DB_PATH"), "devmode_acc_keys_" ++ Workspace ++ ".json"),
-    lager:info("Trying to load data for prefunded accounts from: ~p ~n", [FilePath]),
-
-    NodeFormat = case file:read_file(FilePath) of
+try_reading_prefunded_accounts(WorkspacePath) ->
+    
+    {WorkspaceName, AccFilePath, KeyFilePath} = workspacename_accfilepath_keyfilepath(WorkspacePath),
+    lager:info("Trying to load data for prefunded accounts from: ~p ~n", [KeyFilePath]),
+    NodeFormat = case file:read_file(AccFilePath) of
                     {ok, Accs} -> 
                             lager:info("Account data successfully loaded."),
-                            maps:from_list(jsx:decode(Accs));
-                    {error, _} -> not_found
+                            maps:from_list(jsx:decode(Accs)),
+                            % for the node to be aware of where to read the custom prefunded accounts file from:
+                            os:putenv("AE__SYSTEM__CUSTOM_PREFUNDED_ACCS_FILE", filename:join(WorkspacePath, "devmode_prefunded_accs_" ++ WorkspaceName ++ ".json"));
+                    _ -> {not_found, not_found}
                  end,
     
     {Readable, Devmode} = case file:read_file(KeyFilePath) of
@@ -39,12 +38,17 @@ try_reading_prefunded_accounts() ->
                                             #{ <<"readableFormat">> := DecodedReadableFormat} = Decoded,
                                             #{ <<"devmodeFormat">> := DecodedDevmodeFormat} = Decoded,
                                             {DecodedReadableFormat, DecodedDevmodeFormat};
-                                    {error, _} -> not_found
+                                    _ -> {not_found, not_found} %% struktur passt nicht zur erwarteten return value 1! etwas anderes überlegen
                                 end,
-  
-    #{nodeFormat => NodeFormat,
-       readableFormat => Readable,
-       devmodeFormat => Devmode}.
+
+    % TODO: check if devmodeFormat is still necessary and clean out
+    case (NodeFormat =:= {not_found, not_found}) or (Readable =:= {not_found, not_found}) of
+        true -> not_found;
+        false -> #{nodeFormat => NodeFormat,
+                  readableFormat => Readable,
+                  devmodeFormat => Devmode}
+    end.
+    
         
 start_phase(check_config, _Type, _Args) ->
     case aeu_env:user_config([<<"system">>, <<"dev_mode_accounts">>]) of
@@ -86,31 +90,29 @@ stop(_State) ->
     stop_http_api(),
     ok.
 
-
-determine_workspace() ->
-    %% TODO: Determine some work space name for existing databases, too
-    case os:getenv("AE__CHAIN__DB_PATH") of
-        false -> <<"Existing Database">>;
-        Path -> lists:last(filename:split(Path))
+determine_workspace_dir() ->
+    % Check if a workspace is defined. if not, make the custom DB path OR the default db path the workspace.
+    case os:getenv("AE__CHAIN__DB_PATH") of 
+        false -> 
+            % if no custom env vars provided, take parent dir of mnesia's 'data' directory as default
+            DefaultDir = filename:join(lists:droplast(filename:split(mnesia:system_info(directory)))),
+            lager:info("No workspace provided, taking as default dir: ~p ~n", [DefaultDir]),
+            DefaultDir;
+        DefinedWorkspace ->
+            case filelib:ensure_dir(DefinedWorkspace) of
+                ok -> DefinedWorkspace;
+                _ -> erlang:error(invalid_workspace_path_provided)
+            end
     end.
-
-
-is_empty_dir(Dir) ->
-    case file:list_dir_all(Dir) of
-        {ok, []} -> true;
-        {error, _} -> true;
-        _ -> false
-    end.
-         
 
 
 check_env() ->
-    Workspace = determine_workspace(),
-    Accs = maybe_generate_accounts(Workspace),
+    WorkspaceDir = determine_workspace_dir(),
+    lager:info("Active Workspace Directgory: ~p ~n", [WorkspaceDir]),
+    Accs = read_or_maybe_generate_accounts(WorkspaceDir),
 
-    case  aeu_plugins:is_dev_mode() and (Accs =/= not_found) of
+    case Accs =/= not_found of
         true ->
-
             #{readableFormat := ReadableFormat} = Accs,
             Pub = case ReadableFormat of
                 [[{<<"1">>, Tuples} | _] | _ ] ->
@@ -122,86 +124,82 @@ check_env() ->
             end, 
 
             lager:info("Setting the first devmode account as mining beneficiary: ~p ~n", [Pub]),
-            aeu_plugins:suggest_config([<<"mining">>, <<"beneficiary">>], Pub),
-            aeu_plugins:suggest_config([<<"mining">>, <<"beneficiary_reward_delay">>], 2);
+            aeu_plugins:suggest_config([<<"mining">>, <<"beneficiary">>], Pub);
         false ->
-            case aeu_plugins:is_dev_mode() of
-                 true ->
-                    % if it's devmode and there are no accounts found, it can only be a synced node or
-                    % one that has a DB with the previous hardcoded test keypair. Figuring out this last case is not 
-                    % worth the time, let's assume !accounts => synced node, and set the prefilled accounts as empty.
-                    lager:info("No devmode accounts found. Assumingly, this is chaindata of a previously synced chain."),
-                    #{pubkey := Pub} = aecore_env:patron_keypair_for_testing(),
-                    EncPubkey = aeser_api_encoder:encode(account_pubkey, Pub),
-                    aeu_plugins:suggest_config([<<"mining">>, <<"beneficiary">>], EncPubkey),
-                    aeu_plugins:suggest_config([<<"mining">>, <<"beneficiary_reward_delay">>], 2);
-                 false ->
-                    ok
-            end
-    end,
+            % if it's devmode and there are no accounts found, it can only be a synced node or
+            % one that has a DB with the previous hardcoded test keypair.
+            lager:info("No generated devmode accounts found. Assumingly, this is chaindata of a previously synced chain."),
+            #{pubkey := Pub} = aecore_env:patron_keypair_for_testing(),
+            EncPubkey = aeser_api_encoder:encode(account_pubkey, Pub),
+            aeu_plugins:suggest_config([<<"mining">>, <<"beneficiary">>], EncPubkey)
+        end,
+        aeu_plugins:suggest_config([<<"mining">>, <<"beneficiary_reward_delay">>], 2),
     ok.    
 
-maybe_generate_accounts(Workspace) ->
-    %% A CLI tool will provide a DB path representing either a work space, or some existing database (maybe for the sake of using some synced node data)
-    %% So here we check whether that DB path already has any data present. if not, it's a new workspace and we generate accounts. the node later looks 
-    %% for that file if in devmode and, if present, uses it instead of its hardcoded accounts json.
-    case os:getenv("AE__CHAIN__DB_PATH") of
-        false -> ok;
-        Path -> 
-            case is_empty_dir(Path) of 
-                % no accounts present, generate new json file.
-                true ->
-                    lager:info("New workspace found, generating prefunded accounts."),
-                    %% TODO: Add further account creation options here, for now use default acc generating
+read_or_maybe_generate_accounts(WorkspacePath) ->
+    %% A CLI tool will provide a path to a new DB folder or an existing DB (maybe for the sake of using some synced node data)
+    %% So here we check whether that DB path already has any accounts data present. if not and there is no DB present, it's a new workspace, we generate accounts and 
+    % set the env var for the node whete to look for the accounts. the node later looks 
+    %% for that file if the env var is set and, if present, uses it instead of its hardcoded accounts json.
 
-                    AccountsList = try aeplugin_dev_mode_acc_gen:generate_accounts() of
-                                Accs when is_map(Accs) -> Accs
-                            catch
-                                error:_ -> 
-                                    erlang:error(failed_generating_devmode_accs)
-                            end,
-                    
-                    #{nodeFormat := AccountsInNodeFormat} = AccountsList,
-                    #{readableFormat := AccountsInReadableFormat} = AccountsList,
-                    #{devmodeFormat := AccountsInDevmodeFormat} = AccountsList,
-                    AccountsJSON = 
-                            try jsx:encode(AccountsInNodeFormat) of
-                                JSON -> JSON
-                            catch
-                                error:_ ->
-                                    erlang:error(failed_jsonencoding_generated_devmode_accounts)
-                            end,
+            case try_reading_prefunded_accounts(WorkspacePath) of 
+                FoundAccounts when is_map(FoundAccounts) ->
+                    FoundAccounts;
 
-                    % save the list of account addresses for the node to prefund
-                    JSONfilePath = filename:join(Path, "devmode_prefunded_accs_" ++ Workspace ++ ".json"),
-                    {ok, File} = file:open(JSONfilePath, [write]),
-                    file:write(File, AccountsJSON),
+                not_found -> 
+                    lager:info("No accounts found, checking for presence of mnesia folder....."),
+                % check if there is already a mnesia folder present. 
+                % if so, it's most likely an already existing chain sync and therefor don't generate any accounts.
+                % if not in a synced dir and no accounts files present, generate new json file.
+                    case filelib:is_dir(filename:join(WorkspacePath, "mnesia")) of
+                        true -> 
+                            lager:info("mnesia fodler found, not generating accounts."),
+                            not_found;
+                        false -> 
+                            %% Generate accounts
+                            %% TODO: Add further account creation options here, for now use default acc generating
+                            lager:info("No accounts found, generating..... "),
+                            AccountsList = try aeplugin_dev_mode_acc_gen:generate_accounts() of
+                                        Accs when is_map(Accs) -> Accs
+                                    catch
+                                        error:_ -> 
+                                            erlang:error(failed_generating_devmode_accs)
+                                    end,
+                            
+                            #{nodeFormat := AccountsInNodeFormat} = AccountsList,
+                            #{readableFormat := AccountsInReadableFormat} = AccountsList,
+                            #{devmodeFormat := AccountsInDevmodeFormat} = AccountsList,
+                            AccountsJSON = 
+                                    try jsx:encode(AccountsInNodeFormat) of
+                                        JSON -> JSON
+                                    catch
+                                        error:_ ->
+                                            erlang:error(failed_jsonencoding_generated_devmode_accounts)
+                                    end,
 
+                            {WorkspaceName, _, _} = workspacename_accfilepath_keyfilepath(WorkspacePath),        
+                            % put sys env var for the node to know to use the custom accs
+                            os:putenv("AE__SYSTEM__CUSTOM_PREFUNDED_ACCS_FILE", filename:join(WorkspacePath, "devmode_prefunded_accs_" ++ WorkspaceName ++ ".json")),
+                            % save the list of account addresses for the node to prefund
+                            JSONfilePath = filename:join(WorkspacePath, "devmode_prefunded_accs_" ++ WorkspaceName ++ ".json"),
+                            {ok, File} = file:open(JSONfilePath, [write]),
+                            file:write(File, AccountsJSON),
 
-                    KeysJSON = 
-                        try jsx:encode(#{ readableFormat => AccountsInReadableFormat, devmodeFormat => AccountsInDevmodeFormat}) of
-                            KJSON -> KJSON
-                        catch
-                            error:_ ->
-                                erlang:error(failed_jsonencoding_generated_devmode_keys)
-                        end,
-                    % save the keys of the accounts for devmode
-                    KeysJSONfilePath = filename:join(Path, "devmode_acc_keys_" ++ Workspace ++ ".json"),
-                    {ok, AccountsFile} = file:open(KeysJSONfilePath, [write]),
-                    lager:info("Saving account key information to: ~p ~n", [JSONfilePath]),
-                    file:write(AccountsFile, KeysJSON),
-                     AccountsList;   
-                    
-                false -> 
-                    % dir not empty, accounts could be present, check.
-                    case try_reading_prefunded_accounts() of
-                        % somebody loaded up a DB from a mainnet sync or something.
-                        not_found -> not_found;
-                        % Existing accounts json found, return.
-                        FoundAccounts when is_map(FoundAccounts) -> FoundAccounts
-                    end
-            end
-    end.
+                            KeysJSON = 
+                                try jsx:encode(#{ readableFormat => AccountsInReadableFormat, devmodeFormat => AccountsInDevmodeFormat}) of
+                                    KJSON -> KJSON
+                                catch
+                                    error:_ ->
+                                        erlang:error(failed_jsonencoding_generated_devmode_keys)
+                                end,
+                            % save the keys of the accounts for devmode
+                            KeysJSONfilePath = filename:join(WorkspacePath, "devmode_acc_keys_" ++ WorkspaceName ++ ".json"),
+                            {ok, AccountsFile} = file:open(KeysJSONfilePath, [write]),
+                            lager:info("Saving account key information to: ~p ~n", [JSONfilePath]),
+                            file:write(AccountsFile, KeysJSON),
+                            AccountsList
+                     end
+                end.
 
 start_http_api() ->
     Port = get_http_api_port(),
@@ -243,3 +241,11 @@ maybe_set_auto_emit(#{<<"auto_emit_microblocks">> := Bool}) ->
     aeplugin_dev_mode_emitter:auto_emit_microblocks(Bool);
 maybe_set_auto_emit(_) ->
     ok.
+
+workspacename_accfilepath_keyfilepath(WorkspacePath) ->
+    WorkspaceName = lists:last(filename:split(WorkspacePath)),
+    lager:info("Current active Workspace name: ~p ~n", [WorkspaceName]),
+    FilePath = filename:join(WorkspacePath, "devmode_prefunded_accs_" ++ WorkspaceName ++ ".json"),
+    KeyFilePath = filename:join(WorkspacePath, "devmode_acc_keys_" ++ WorkspaceName ++ ".json"),
+    
+    {WorkspaceName, FilePath, KeyFilePath}.
