@@ -37,8 +37,9 @@ try_reading_prefunded_accounts(WorkspacePath) ->
                                             Decoded = maps:from_list(jsx:decode(KeyAccs)),
                                             #{ <<"readableFormat">> := DecodedReadableFormat} = Decoded,
                                             #{ <<"devmodeFormat">> := DecodedDevmodeFormat} = Decoded,
-                                            {DecodedReadableFormat, DecodedDevmodeFormat};
-                                    _ -> {not_found, not_found} %% struktur passt nicht zur erwarteten return value 1! etwas anderes überlegen
+                                            ReadableFormatAsMaps = [ maps:from_list(Acc) || Acc <- DecodedReadableFormat],
+                                            {ReadableFormatAsMaps, DecodedDevmodeFormat};
+                                    _ -> {not_found, not_found}
                                 end,
 
     % TODO: check if devmodeFormat is still necessary and clean out
@@ -96,10 +97,12 @@ check_env() ->
     case Accs =/= not_found of
         true ->
             #{readableFormat := ReadableFormat} = Accs,
+            lager:info("Got accs: ~p ~n", [ReadableFormat]),
             Pub = case ReadableFormat of
-                [ Acc | _ ] ->
-                    #{pub_key := PubKey} = Acc,
+                [ #{pub_key := PubKey} | _ ] ->
                     atom_to_binary(PubKey);
+                [ #{<<"pub_key">> := PubKey} | _ ] ->
+                    PubKey;
                 _ ->
                     erlang:error(invalid_devmode_data_format_found)
                 end, 
@@ -124,6 +127,8 @@ read_or_maybe_generate_accounts(WorkspacePath) ->
 
             case try_reading_prefunded_accounts(WorkspacePath) of 
                 FoundAccounts when is_map(FoundAccounts) ->
+                    #{readableFormat := ReadableFormat} = FoundAccounts,
+                    lager:info("-------->>> The FoundAccounts ~p ~n", [ReadableFormat]),
                     FoundAccounts;
 
                 not_found -> 
