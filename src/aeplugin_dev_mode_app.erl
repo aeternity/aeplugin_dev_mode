@@ -51,32 +51,15 @@ try_reading_prefunded_accounts(WorkspacePath) ->
     
         
 start_phase(check_config, _Type, _Args) ->
-    case aeu_env:user_config([<<"system">>, <<"dev_mode_accounts">>]) of
-        undefined -> 
-            %% In this case, we should be dealing with a pre-synced database and no prefunded accounts.
-            % Todo: This needs explicit testing
+    case read_or_maybe_generate_accounts(determine_workspace_dir()) of 
+        not_found ->
+            %% In this case, we should be dealing with a pre-synced database and no custom prefunded accounts.
             aeplugin_dev_mode_emitter:set_prefilled_accounts_info(#{
                 nodeFormat => [],
                 readableFormat => [],
                 devmodeFormat => []});
-        {ok, Accs} -> 
-                % Due to some weird quirk, the setting is not returned as a list of maps as it was stored,
-                % but tagged tuples and lists etc. Here it is brought in shape again.
-        BasicMap = maps:from_list(Accs),
-        #{readableFormat := Readable} = BasicMap,
-        #{nodeFormat := Node} = BasicMap,
-        #{devmodeFormat := Devmode} = BasicMap,
-        % check if removal of numeration is necessary
-            FixedReadable = case Readable of 
-                                    [{1,_}|_] -> [maps:from_list(OneReadable) || {_, OneReadable} <- Readable];
-                                    [{<<"1">>,_}|_] -> [maps:from_list(OneReadable) || {_, OneReadable} <- Readable];
-                                    _ -> Readable
-                                end,
-            FixedNode = maps:from_list(Node),
-            aeplugin_dev_mode_emitter:set_prefilled_accounts_info(#{
-                                                                    nodeFormat => FixedNode,
-                                                                    readableFormat => FixedReadable,
-                                                                    devmodeFormat => Devmode})
+        Accs -> 
+            aeplugin_dev_mode_emitter:set_prefilled_accounts_info(Accs)
     end,
 
     case aeu_plugins:check_config(?PLUGIN_NAME_STR, ?SCHEMA_FNAME, ?OS_ENV_PFX) of
@@ -110,19 +93,16 @@ check_env() ->
     WorkspaceDir = determine_workspace_dir(),
     lager:info("Active Workspace Directgory: ~p ~n", [WorkspaceDir]),
     Accs = read_or_maybe_generate_accounts(WorkspaceDir),
-
     case Accs =/= not_found of
         true ->
             #{readableFormat := ReadableFormat} = Accs,
             Pub = case ReadableFormat of
-                [[{<<"1">>, Tuples} | _] | _ ] ->
-                    PropMap = maps:from_list(Tuples),
-                    #{<<"pub_key">> := PubKey} = PropMap,
-                    PubKey;
-                [ #{1 := #{ pub_key := PubKey}} | _] ->
-                    atom_to_binary(PubKey)
-            end, 
-
+                [ Acc | _ ] ->
+                    #{pub_key := PubKey} = Acc,
+                    atom_to_binary(PubKey);
+                _ ->
+                    erlang:error(invalid_devmode_data_format_found)
+                end, 
             lager:info("Setting the first devmode account as mining beneficiary: ~p ~n", [Pub]),
             aeu_plugins:suggest_config([<<"mining">>, <<"beneficiary">>], Pub);
         false ->
@@ -139,8 +119,8 @@ check_env() ->
 read_or_maybe_generate_accounts(WorkspacePath) ->
     %% A CLI tool will provide a path to a new DB folder or an existing DB (maybe for the sake of using some synced node data)
     %% So here we check whether that DB path already has any accounts data present. if not and there is no DB present, it's a new workspace, we generate accounts and 
-    % set the env var for the node whete to look for the accounts. the node later looks 
-    %% for that file if the env var is set and, if present, uses it instead of its hardcoded accounts json.
+    %% set the env var for the node whete to look for the accounts. 
+    %% The node later looks for that file if the env var is set and, if present, uses it instead of its hardcoded accounts json.
 
             case try_reading_prefunded_accounts(WorkspacePath) of 
                 FoundAccounts when is_map(FoundAccounts) ->
