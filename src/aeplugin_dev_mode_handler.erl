@@ -10,6 +10,7 @@
         ]).
 
 -import(aeplugin_dev_mode_html, [html/1, meta/0]).
+-import(aeplugin_dev_mode_app, [emitter/0]).
 
 routes() ->
     [
@@ -95,10 +96,10 @@ accounts_table() ->
             {th, <<"Balance">>}]}
      | lists:map(
          fun({K, V}) ->
-                 Strong = is_demo_pubkey(K),
+                 {Strong, PrivKey} = privkey_if_demokey(K),
                  EncKey = aeser_api_encoder:encode(account_pubkey, K),
                  {tr, [{td, maybe_strong(Strong, EncKey)},
-                       {td, maybe_strong(Strong, privkey_if_demokey(K))},
+                       {td, maybe_strong(Strong, PrivKey)},
                        {td, maybe_strong(Strong, integer_to_binary(V))}]}
          end, Balances) ]}.
 
@@ -107,11 +108,11 @@ balances_json() ->
     lists:map(
         fun({K, V}) ->
                 EncKey = aeser_api_encoder:encode(account_pubkey, K),
-                #{<<"pub_key">> => EncKey, <<"balance">> => list_to_atom(integer_to_list(V)) }
+                #{<<"pub_key">> => EncKey, <<"balance">> => integer_to_binary(V) }
         end, Balances).
 
 devmode_accounts() ->
-    aeplugin_dev_mode_emitter:get_prefilled_accounts_info().
+    aeplugin_dev_mode_prefunded:get_prefunded().
 
 account_balances() ->
     {ok, Trees} = aec_chain:get_block_state(aec_chain:top_block_hash()),
@@ -125,7 +126,7 @@ emit_kb_form() ->
      ]}.
 
 set_kb_interval_form() ->
-    Prev = aeplugin_dev_mode_emitter:get_keyblock_interval(),
+    Prev = (emitter()):get_keyblock_interval(),
     {form, #{action => <<"/kb_interval">>, method => get},
      [{label, #{for => secs}, <<"Secs: ">>},
       {input, #{type => text, id => secs, name => secs, value => integer_to_binary(Prev)}, []},
@@ -133,7 +134,7 @@ set_kb_interval_form() ->
      ]}.
 
 set_mb_interval_form() ->
-    Prev = aeplugin_dev_mode_emitter:get_microblock_interval(),
+    Prev = (emitter()):get_microblock_interval(),
     {form, #{action => <<"/mb_interval">>, method => get},
      [{label, #{for => secs}, <<"Secs: ">>},
       {input, #{type => text, id => secs, name => secs, value => integer_to_binary(Prev)}, []},
@@ -141,7 +142,7 @@ set_mb_interval_form() ->
      ]}.
 
 auto_emit_mb_form() ->
-    Bool = aeplugin_dev_mode_emitter:get_auto_emit_microblocks(),
+    Bool = (emitter()):get_auto_emit_microblocks(),
     CBox0 = #{type => checkbox, id => auto_emit, name => auto_emit},
     CBox = if Bool -> CBox0#{checked => true};
               true -> CBox0
@@ -192,7 +193,7 @@ serve_request(#{path := <<"/emit_kb">>, qs := Qs}) ->
     case N of
         0 -> ok;
         _ ->
-            aeplugin_dev_mode_emitter:emit_keyblocks(N)
+            (emitter()):emit_keyblocks(N)
     end,
     #{<<"old_height">> => OldHeight};
 serve_request(#{path := <<"/kb_interval">>, qs := Qs}) ->
@@ -200,7 +201,7 @@ serve_request(#{path := <<"/kb_interval">>, qs := Qs}) ->
              fun(undefined) ->
                      weird;
                 (Secs) ->
-                     aeplugin_dev_mode_emitter:set_keyblock_interval(Secs),
+                     (emitter()):set_keyblock_interval(Secs),
                      lager:info("New keyblock interval: ~p secs" ++ maybe_off(Secs), [Secs])
              end);
 serve_request(#{path := <<"/mb_interval">>, qs := Qs}) ->
@@ -208,11 +209,11 @@ serve_request(#{path := <<"/mb_interval">>, qs := Qs}) ->
              fun(undefined) ->
                      {error, unknown_parameters};
                 (Secs) ->
-                     aeplugin_dev_mode_emitter:set_microblock_interval(Secs),
+                     (emitter()):set_microblock_interval(Secs),
                      lager:info("New microblock interval: ~p secs" ++ maybe_off(Secs), [Secs])
              end);
 serve_request(#{path := <<"/emit_mb">>}) ->
-    aeplugin_dev_mode_emitter:emit_microblock();
+    (emitter()):emit_microblock();
 serve_request(#{path := <<"/auto_emit_mb">>, qs := Qs}) ->
     Params = httpd:parse_query(Qs),
     case {proplists:get_value(<<"auto_emit">>, Params, undefined),
@@ -250,13 +251,13 @@ serve_request(#{path := <<"/spend">>, qs := Qs}) ->
             {error, unknown_account}
     end;
 serve_request(#{path := <<"/status">>}) ->
-    #{readableFormat := PrefundedAccs} = devmode_accounts(),
+    PrefundedAccs = devmode_accounts(),
     #{
       <<"devmode_settings">> =>
           #{
-             <<"auto_emit_microblocks">> => aeplugin_dev_mode_emitter:get_auto_emit_microblocks(),
-             <<"keyblock_interval">> => aeplugin_dev_mode_emitter:get_keyblock_interval(),
-             <<"microblock_interval">> => aeplugin_dev_mode_emitter:get_microblock_interval()
+             <<"auto_emit_microblocks">> => (emitter()):get_auto_emit_microblocks(),
+             <<"keyblock_interval">> => (emitter()):get_keyblock_interval(),
+             <<"microblock_interval">> => (emitter()):get_microblock_interval()
            },
       <<"chain">> =>
           #{
@@ -294,7 +295,7 @@ maybe_off(_) ->
     "".
 
 set_auto_emit(Bool) when is_boolean(Bool) ->
-    aeplugin_dev_mode_emitter:auto_emit_microblocks(Bool),
+    (emitter()):auto_emit_microblocks(Bool),
     lager:info("Auto-emit microblocks set to ~s", [if Bool -> "on"; true -> "off" end]).
 
 parse_qs(Qs, Types, F) ->
@@ -342,16 +343,13 @@ sign_tx(Tx, PrivKey) ->
 acct(Key) ->
     aeser_id:create(account, Key).
 
-is_demo_pubkey(K) ->
-    lists:keymember(K, 1, demo_keypairs()).
 
 privkey_if_demokey(Pub) ->
-    case is_demo_pubkey(Pub) of
-        true ->
-            {_, Priv} = lists:keyfind(Pub, 1, demo_keypairs()),
-            hexlify(Priv);
+    case lists:keyfind(Pub, 1, all_demo_keypairs()) of
+        {_, Priv} ->
+            {true, hexlify(Priv)};
         false ->
-            <<"-">>
+            {false, <<"-">>}
     end.
 
 min_gas_price() ->
@@ -384,6 +382,13 @@ demo_keypairs() ->
         137,81,19,55,187,145,79,134,92,232,173,60,3,253,120,
         240,53,192>>}
     ].
+
+all_demo_keypairs() ->
+    demo_keypairs() ++ prefilled_keypairs().
+
+prefilled_keypairs() ->
+    [ {Pub, Priv} || #{pub_key := Pub, priv_key := Priv}
+                         <- aeplugin_dev_mode_prefunded:get_prefunded()].
 
 patron_keypair() ->
     #{pubkey := Pub, privkey := Priv} = aecore_env:patron_keypair_for_testing(),

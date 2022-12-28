@@ -13,13 +13,20 @@ init([]) ->
     SupFlags = #{ strategy  => one_for_one
                 , intensity => 3
                 , period    => 60 },
-    Emitter = aeplugin_dev_mode_emitter,
-    {ok, {SupFlags,
-          [
-           #{ id       => Emitter
-            , start    => {Emitter, start_link, []}
-            , restart  => permanent
-            , shutdown => 2000
-            , type     => worker
-            , modules  => [Emitter] }
-          ]}}.
+    {ok, {SupFlags, children()}}.
+
+
+children() ->
+    case aeplugin_dev_mode_app:emitter() of
+        aeplugin_dev_mode_emitter = Emitter ->
+            [
+             #{ id       => Emitter
+              , start    => {Emitter, start_link, []}
+              , restart  => permanent
+              , shutdown => 2000
+              , type     => worker
+              , modules  => [Emitter] }
+            ];
+        _ ->
+            []
+    end.

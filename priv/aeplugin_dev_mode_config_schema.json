@@ -3,25 +3,19 @@
     "type" : "object",
     "additionalProperties" : false,
     "properties" : {
-        "keyblock_interval" : {
-            "type" : "integer",
-            "help" : "Interval, in seconds, between keyblocks. If 0, keyblocks are only produced on-demand",
-            "default" : 0
-        },
-        "microblock_interval" : {
-            "type" : "integer",
-            "help" : "Interval, in seconds, between microblocks. If 0, microblocks are only produced on-demand",
-            "default" : 0
-        },
-        "auto_emit_microblocks" : {
-            "type" : "boolean",
-            "default" : false,
-            "help" : "Emit microblocks as soon as transactions have been pushed to the mempool"
-        },
         "prefunded_accounts" : {
             "description" : "When not using a synced Chain Database, devmode gives you a set of prefunded accounts",
             "type" : "array",
             "default" : []
+        },
+        "workspace_path" : {
+            "description": "Where to store plugin-specific data",
+            "type" : "string"
+        },
+        "workspace_name" : {
+            "description" : "Name for separating different configurations. Default: ''",
+            "type" : "string",
+            "default" : ""
         }
     }
 }

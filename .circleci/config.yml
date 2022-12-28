@@ -35,8 +35,7 @@ jobs:
       - run:
           name: Package
           command: |
-            cd _build/default/lib/
-            tar -czhf /tmp/artifacts/aeplugin_dev_mode.tar.gz --exclude src --exclude include aeplugin_dev_mode
+            cp _build/default/aeplugin_dev_mode.ez /tmp/artifacts/
       - persist_to_workspace:
           root: /tmp/artifacts
           paths: ["*"]
