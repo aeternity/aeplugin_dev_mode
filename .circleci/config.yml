@@ -27,7 +27,7 @@ jobs:
       - checkout
       - run:
           name: Compile
-          command: rebar3 compile
+          command: rebar3 ae_plugin
       - run:
           name: Prepare workspace artifacts
           command: |
