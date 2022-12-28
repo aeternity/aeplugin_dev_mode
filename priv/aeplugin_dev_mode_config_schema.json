@@ -1,7 +1,6 @@
 {
     "$schema" : "http://json-schema.org/draft-04/schema#",
     "type" : "object",
-    "additionalProperties" : false,
     "properties" : {
         "prefunded_accounts" : {
             "description" : "When not using a synced Chain Database, devmode gives you a set of prefunded accounts",

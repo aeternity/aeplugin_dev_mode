@@ -15,7 +15,7 @@
   0},
  {<<"ebip39">>,
   {git,"https://github.com/aeternity/ebip39.git",
-       {ref,"75203401b39aeba45f20b7128f84eeda6a2a4ab6"}},
+       {ref,"1a9aa89c345ee9fe8bd2a0f193493146ec1d3a0b"}},
   0},
  {<<"ec_utils">>,
   {git,"https://github.com/hanssv/ec_utils.git",
