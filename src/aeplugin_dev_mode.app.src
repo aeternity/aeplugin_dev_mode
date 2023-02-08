@@ -5,12 +5,13 @@
   {registered, []},
   {mod, {aeplugin_dev_mode_app, []}},
   {start_phases, [{check_config, []}]},
-  {applications, [kernel, stdlib, aecore]},
+  {applications, [kernel, stdlib, aecore, ebip39, eaex10, epbkdf2, ec_utils, aedevmode]},
   {env,
    [{'$setup_hooks',
      [{normal,
        [
-        {110, {aeplugin_dev_mode_app, check_env, []}}
+        %% We run our hook AFTER core check_env hooks have completed
+        {111, {aeplugin_dev_mode_app, check_env, []}}
        ]}
      ]},
     {'$app_ctrl',

@@ -3,7 +3,3 @@ system:
     plugins:
         -
           name: aeplugin_dev_mode
-          config:
-            keyblock_interval: 0
-            microblock_interval: 0
-            auto_emit_microblocks: true

@@ -3,6 +3,7 @@
 *.beam
 *.plt
 erl_crash.dump
+VSN
 .concrete/DEV_MODE
 
 # rebar 2.x
@@ -17,3 +18,4 @@ _build/
 _checkouts/
 .history
 notes.md
+.vscode
