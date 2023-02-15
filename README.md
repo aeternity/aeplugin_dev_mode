@@ -76,10 +76,16 @@ system:
         -
           name: aeplugin_dev_mode
           config:
-            keyblock_interval: 0
-            microblock_interval: 0
-            auto_emit_microblocks: true
+            prefunded_accounts: []
+dev_mode:
+    keyblock_interval: 0
+    microblock_interval: 0
+    auto_emit_microblocks: true
 ```
+
+**NOTE:** In earlier versions of the dev_mode plugin, the block interval and auto-emit
+options were given in the plugin config. They have now been moved to the Aeternity node
+config.
 
 Note that the `config` attribute can be left out. The values in the example
 are the default values, except for `auto_emit_microblocks`, which defaults to `false`.
@@ -149,3 +155,25 @@ added:
 Note that when `auto_emit` is on, the devmode consensus logic will interleave microblocks
 and keyblocks (one microblock followed by one keyblocks) until all expected transactions
 are on-chain.
+
+## Local Docker build
+
+There is a `Dockerfile` in the repository for testing. It uses the `aeternity/aeternity:master` 
+docker image. Remember to do `docker pull aeternity/aeternity:master` on occasion, if there
+have been updates to the `aeternity` code. You don't have to do it for every build.
+
+Building the docker file (assuming that you have Docker installed):
+
+```
+docker pull aeternity/aeternity:master
+docker build -t devmode .
+```
+
+Running the above image:
+
+```
+docker run -t devmode:latest -p 3313:3313
+```
+
+Consult tutorials and documentation on Docker features. Specifically here, you need to use the
+`-p` opition to map the HTTP port (default: `3313`) so you can access the REST interface.
