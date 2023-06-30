@@ -39,7 +39,7 @@ start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 emit_keyblocks(N) when is_integer(N), N > 0 ->
-    gen_server:call(?MODULE, {emit_keyblocks, N}).
+    gen_server:call(?MODULE, {emit_keyblocks, N}, infinity).
 
 set_prefilled_accounts_info(Accs) ->
     gen_server:call(?MODULE, {set_prefilled_accounts_info, Accs}).
