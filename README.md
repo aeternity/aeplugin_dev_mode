@@ -109,12 +109,14 @@ The default is `""` - i.e. no subdirectory.
 | prefunded:gen  | balance           | integer         |
 | prefunded:gen  | mnemonic          | string          |
 
-When the dev_mode plugin is initialized, and if it finds that there isn't yet
-a database in place (no chain has been created), it looks for a prefunded accounts file
+When the dev_mode plugin is initialized, it looks for a prefunded accounts file
 either specified with the plugin config `prefunded:file`, or as
 `WorkSpacePath[/WorkspaceName]/devmode_prefunded_accounts.json`.
 If there is no such file, it checks if parameters are provided for automatically
-generating accounts.
+generating accounts. Generation can only proceed if there isn't aleady a genesis
+block (the database has not yet been created). If there is no specified prefunded
+accounts file, and the chain exists, startup proceeds as normal. This would be the
+case when starting in dev mode based on an existing chain.
 
 #### Using multiple workspaces
 
