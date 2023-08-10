@@ -398,7 +398,7 @@ hexlify(Bin) when is_binary(Bin) ->
     << <<(hex(H)),(hex(L))>> || <<H:4,L:4>> <= Bin >>.
 
 hex(C) when C < 10 -> $0 + C;
-    hex(C) -> $a + C - 10.
+hex(C) -> $a + C - 10.
 
 to_bin(B) when is_binary(B) ->
     B;
