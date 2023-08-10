@@ -19,15 +19,8 @@ start(_Type, _Args) ->
     {ok, Pid}.
 
 
-start_phase(check_config, _Type, _Args) ->
-    case aeu_plugins:find_config(?PLUGIN_NAME_STR, [], [user_config, schema_default]) of
-        undefined ->
-            lager:debug("Devmode plugin config not found", []),
-            ok;
-        {ok, Config} ->
-            lager:info("Devmode plugin config: ~p", [Config]),
-            apply_config(Config)
-    end.
+start_phase(_Phase, _Type, _Args) ->
+    ok.
 
 stop(_State) ->
     stop_http_api(),
@@ -72,15 +65,15 @@ maybe_set_beneficiary(Pub) ->
     end.
 
 determine_workspace_dir() ->
-    case aeu_plugins:find_config(?PLUGIN_NAME_STR, [<<"workspace_path">>], [user_config]) of
-        undefined ->
-            Dir = aeu_plugins:data_dir(?PLUGIN_NAME_STR),
-            ok = filelib:ensure_dir(filename:join(Dir, "foo")),
-            Dir;
-        {ok, Dir} ->
-            Dir
-    end.
+    WsName = find_config([<<"workspace_name">>], <<>>),
+    WsPath = find_config([<<"workspace_path">>], aeu_plugins:data_dir(?PLUGIN_NAME_STR)),
+    Dir = filename:join(WsPath, WsName),
+    ok = filelib:ensure_dir(filename:join(Dir, "foo")),
+    Dir.
 
+find_config(Key, Default) ->
+    {ok, Value} = aeu_plugins:find_config(?PLUGIN_NAME_STR, Key, [user_config, {value, Default}]),
+    Value.
 
 
 start_http_api() ->
@@ -89,6 +82,7 @@ start_http_api() ->
     {ok, _} = cowboy:start_clear(devmode_listener,
                                  [{port, Port}],
                                  #{env => #{dispatch => Dispatch}}),
+    lager:info("Dev mode handler ready on port ~p", [Port]),
     ok.
 
 stop_http_api() ->
@@ -96,9 +90,6 @@ stop_http_api() ->
 
 get_http_api_port() ->
     list_to_integer(os:getenv("AE_DEVMODE_PORT", "3313")).
-
-apply_config(_Config) ->
-    ok.
 
 info() ->
     M = emitter(),
