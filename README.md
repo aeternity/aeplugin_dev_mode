@@ -76,8 +76,6 @@ system:
     plugins:
         -
           name: aeplugin_dev_mode
-          config:
-            prefunded_accounts: []
 dev_mode:
     keyblock_interval: 0
     microblock_interval: 0
