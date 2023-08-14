@@ -39,7 +39,7 @@ generate_accounts(WorkspaceDir) ->
     end.
 
 mnesia_db_exists() ->
-    filelib:is_dir(mnesia_monitor:get_env(dir)).
+    filelib:is_file(filename:join(mnesia_monitor:get_env(dir), "schema.DAT")).
 
 suggest_prefunded(Filename, Accs) ->
     NodePrefunded = prefunded_pub_name(Filename),
