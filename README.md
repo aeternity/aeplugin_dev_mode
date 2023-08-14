@@ -254,8 +254,17 @@ docker build -t devmode .
 Running the above image:
 
 ```
-docker run -t devmode:latest -p 3313:3313
+docker run -t -p 3313:3313 devmode:latest
 ```
 
 Consult tutorials and documentation on Docker features. Specifically here, you need to use the
 `-p` opition to map the HTTP port (default: `3313`) so you can access the REST interface.
+
+You can feed configuration data into the docker container using OS environment variables:
+
+```
+docker run -t -p 3313:3313 -e "DEVMODE__PREFUNDED__GEN={\"quantity\":10, \"balance\":100000}" devmode:latest
+```
+
+(NOTE that this is similar to setting config data for the Aeternity node using the `AE__` prefix.
+The corresponding prefix for the dev mode plugin is `DEVMODE__`.)
