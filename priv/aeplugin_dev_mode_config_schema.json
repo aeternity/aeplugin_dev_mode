@@ -2,10 +2,25 @@
     "$schema" : "http://json-schema.org/draft-04/schema#",
     "type" : "object",
     "properties" : {
-        "prefunded_accounts" : {
-            "description" : "When not using a synced Chain Database, devmode gives you a set of prefunded accounts",
-            "type" : "array",
-            "default" : []
+        "prefunded" : {
+            "type" : "object",
+	    "additionalProperties" : false,
+            "properties" : {
+                "file" : {
+		    "description" : "Prefunded accounts file (JSON) for loading at chain init time",
+		    "type": "string"
+		},
+                "gen" : {
+		    "description" : "Optional parameters for generating the file, if not present",
+                    "type" : "object",
+		    "additionalProperties" : false,
+                    "properties" : {
+                        "quantity" : { "type" : "integer" },
+                        "balance" : { "type" : "integer" },
+			"mnemonic" : { "type" : "string" }
+                    }
+                }
+            }
         },
         "workspace_path" : {
             "description": "Where to store plugin-specific data",

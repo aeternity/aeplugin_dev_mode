@@ -25,29 +25,30 @@ in Aeternity is not run. This is for development and testing only.
 
 ## Building
 
-The basic plugin uses some components that the Aeternity source depends on.
-To ensure that the same versions are used, check out the Aeternity source
-from [github](https://github.com/aeternity/aeternity), then set the OS
-environment variable `AE_ROOT` to point to the top `aeternity/` directory.
-The `rebar.config.script` logic in `aeplugin_dev_mode` will then fetch
-the correct versions for all dependencies listed with only the component
-name, e.g. `{deps, [lager, cowboy]}`.
+The plugin uses the `aeplugin_rebar3` rebar plugin. This collects
+dependencies from https://github.com/aeternity/aeternity (master).
+If you want to build against another version of Aeternity, checkout the
+[README for aeplugin_rebar3](https://github.com/aeplugin_rebar3).
 
-Example:
+Dependencies that are already part of the Aeternity node are given on the
+form `{lager, {ae, lager}}`. Other dependencies are declared as usual.
+
+To simply compile the code:
 ```
-$ export AE_ROOT=~/dev/aeternity
 $ rebar3 compile
 ```
 
-Note that (for now), the compiled code ends up under `_build/default/lib/`,
-so you can symlink or copy `_build/default/lib/aeplugin_dev_mode` into the
-Aeternity plugin lib root (see below).
+To build a plugin archive (will also compile), run the following command:
+
+```
+$ rebar3 ae_plugin
+```
+
+This should cause generation of a file `_build/default/aeplugin_dev_mode.ez`.
+This file is then copied or symlinked into the `AETERNITY_ROOT/plugins/` directory.
 
 ## Loading
 
-After compiling, copy or link the application directory found at
-`_build/default/lib/aeplugin_dev_mode` into the AE node's plugin lib
-root. If not otherwise configured, this defaults to `$AETERNITY_TOP/plugins/`.
 After this, the node can be started either with a configuration as suggested
 below, or most simply by providing some OS environment variables, for example:
 
@@ -75,8 +76,6 @@ system:
     plugins:
         -
           name: aeplugin_dev_mode
-          config:
-            prefunded_accounts: []
 dev_mode:
     keyblock_interval: 0
     microblock_interval: 0
@@ -86,6 +85,87 @@ dev_mode:
 **NOTE:** In earlier versions of the dev_mode plugin, the block interval and auto-emit
 options were given in the plugin config. They have now been moved to the Aeternity node
 config.
+
+### Plugin configuration options
+
+#### `workspace_path` (string)
+This makes it possible to specify a custom path to where the plugin can
+read and write files. The directiory must be read/write accessible.
+The default path is `AETERNITY_ROOT/data/aeplugin_dev_mode/`.
+
+### `workspace_name` (string)
+This specifies an optional subdirectory under the workspace path.
+The default is `""` - i.e. no subdirectory.
+
+### Prefunded accounts settings
+
+| group          | key               | type            |
+| ---------------|-------------------|-----------------|
+| prefunded      | file              | string          |
+| prefunded      | gen               | object          |
+| prefunded:gen  | quantity          | integer         |
+| prefunded:gen  | balance           | integer         |
+| prefunded:gen  | mnemonic          | string          |
+
+When the dev_mode plugin is initialized, it looks for a prefunded accounts file
+either specified with the plugin config `prefunded:file`, or as
+`WorkSpacePath[/WorkspaceName]/devmode_prefunded_accounts.json`.
+If there is no such file, it checks if parameters are provided for automatically
+generating accounts. Generation can only proceed if there isn't aleady a genesis
+block (the database has not yet been created). If there is no specified prefunded
+accounts file, and the chain exists, startup proceeds as normal. This would be the
+case when starting in dev mode based on an existing chain.
+
+#### Using multiple workspaces
+
+Here is an example aeternity config, which initializes a workspace, also placing
+the chain database in that workspace directory:
+
+```
+chain:
+  db_path: data/aeplugin_dev_mode/ws1
+system:
+  dev_mode: true
+  plugins:
+      -
+        name: aeplugin_dev_mode
+        config:
+          workspace_name: ws1
+          prefunded:
+            gen:
+              quantity: 10
+              balance: 1000000
+```
+The default workspace path of `AE_ROOT/data/aeplugin_dev_mode` is assumed.
+Note that if another workspace path is defined in the plugin config, the
+`chain:db_path` value needs to be modified to match. The node will expand
+all path strings to absolute paths from `AE_ROOT`. It will also create intermediate
+directories if possible, and ensure that the user has write access to the target
+directory.
+
+In the above case, the plugin will look for the default prefunded accounts file
+`data/aeplugin_dev_mode/ws1/devmode_prefunded_accounts.json`. During the
+first startup, the file isn't present, so a file is generated using the parameters
+in the plugin config `prefunded:gen`. The generated file contains both public
+and private keys for each account.
+
+In order to make the accounts be created as the genesis block is created,
+a public version of the file is made. The name is the same as the full file,
+except that "-PUB" is added just before the extension. This file contains only
+the public keys and the account, on the format expected by the node.
+
+After first startup, the contents of the `ws1` directory would be:
+
+```
+$ ls data/aeplugin_dev_mode/ws1/
+devmode_prefunded_accounts.json      devmode_prefunded_accounts-PUB.json  mnesia/
+```
+
+**NOTE:** The node will reconstitute and validate the genesis block at each subsequent
+restart, so the prefunded accounts must remain unchanged. If you want to delete and
+re-generate, you will also need to delete the database.
+
+### Default settings
 
 Note that the `config` attribute can be left out. The values in the example
 are the default values, except for `auto_emit_microblocks`, which defaults to `false`.
@@ -110,7 +190,9 @@ Note that setting the `network_id` to `ae_dev` activates some defaults in itself
 mainly: the `on_demand` consensus mode.
 
 The parameters `keyblock_interval`, `microblock_interval` and `auto_emit_microblocks`
-are defined in the schema [priv/aeplugin_dev_mode_config_schema.json](priv/aeplugin_dev_mode_config_schema.json). The settings are automatically checked against the schema when the plugin starts.
+are defined in the node schema and handled by the node's built-in dev mode emitter.
+The settings are automatically checked against the schema at node startup, and processed
+by the built-in emitter when `dev_mode` is activated.
 
 Setting the reward delay as low as it will go (`2`), will ensure that rewards
 are paid out sooner, which can be useful to generate funds in the beneficiary
@@ -172,8 +254,17 @@ docker build -t devmode .
 Running the above image:
 
 ```
-docker run -t devmode:latest -p 3313:3313
+docker run -t -p 3313:3313 devmode:latest
 ```
 
 Consult tutorials and documentation on Docker features. Specifically here, you need to use the
 `-p` opition to map the HTTP port (default: `3313`) so you can access the REST interface.
+
+You can feed configuration data into the docker container using OS environment variables:
+
+```
+docker run -t -p 3313:3313 -e "DEVMODE__PREFUNDED__GEN={\"quantity\":10, \"balance\":100000}" devmode:latest
+```
+
+(NOTE that this is similar to setting config data for the Aeternity node using the `AE__` prefix.
+The corresponding prefix for the dev mode plugin is `DEVMODE__`.)
