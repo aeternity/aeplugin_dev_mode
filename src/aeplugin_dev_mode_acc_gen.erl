@@ -8,6 +8,7 @@
 %% Generates Accounts from sources like mnemonic and seed, utilising ebip39 and eaex10
 %%
 generate_from_mnemonic(Mnemonic, Quantity, Balance) ->
+    lager:info("Mnemonic = ~p", [Mnemonic]),
     Seed = ebip39:mnemonic_to_seed(Mnemonic, <<"">>),
     Derived = derive_from_seed(Seed, Quantity),
     format_accounts(Derived, Balance).
