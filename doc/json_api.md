@@ -50,7 +50,7 @@ Emit `n` keyblocks (default: 1). Reports the old chain height and the new chain 
 
 **Example:**
 ```
-$curl -H 'Accept: application/json' 'http://localhost:3313/emit_kb?n=3&pp_json'
+$ curl -H 'Accept: application/json' 'http://localhost:3313/emit_kb?n=3&pp_json'
 {
   "chain":{
     "height":4,
@@ -188,7 +188,7 @@ top and current chain information.
 
 **Example:**
 ```
- curl -H 'Accept: application/json' 'http://localhost:3313/rollback?hash=mh_vMoftTAVvKJhm9noSoK84zAbV69URKP6v649ZvAhACp3ebku3&pp_json'
+$ curl -H 'Accept: application/json' 'http://localhost:3313/rollback?hash=mh_vMoftTAVvKJhm9noSoK84zAbV69URKP6v649ZvAhACp3ebku3&pp_json'
 {
   "chain":{
     "height":5,

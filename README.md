@@ -121,7 +121,7 @@ case when starting in dev mode based on an existing chain.
 Here is an example aeternity config, which initializes a workspace, also placing
 the chain database in that workspace directory:
 
-```
+```yaml
 chain:
   db_path: data/aeplugin_dev_mode/ws1
 system:
