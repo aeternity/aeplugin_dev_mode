@@ -90,7 +90,7 @@ config.
 
 #### `workspace_path` (string)
 This makes it possible to specify a custom path to where the plugin can
-read and write files. The directiory must be read/write accessible.
+read and write files. The directory must be read/write accessible.
 The default path is `AETERNITY_ROOT/data/aeplugin_dev_mode/`.
 
 ### `workspace_name` (string)
@@ -111,7 +111,7 @@ When the dev_mode plugin is initialized, it looks for a prefunded accounts file
 either specified with the plugin config `prefunded:file`, or as
 `WorkSpacePath[/WorkspaceName]/devmode_prefunded_accounts.json`.
 If there is no such file, it checks if parameters are provided for automatically
-generating accounts. Generation can only proceed if there isn't aleady a genesis
+generating accounts. Generation can only proceed if there isn't already a genesis
 block (the database has not yet been created). If there is no specified prefunded
 accounts file, and the chain exists, startup proceeds as normal. This would be the
 case when starting in dev mode based on an existing chain.
@@ -258,7 +258,7 @@ docker run -t -p 3313:3313 devmode:latest
 ```
 
 Consult tutorials and documentation on Docker features. Specifically here, you need to use the
-`-p` opition to map the HTTP port (default: `3313`) so you can access the REST interface.
+`-p` option to map the HTTP port (default: `3313`) so you can access the REST interface.
 
 You can feed configuration data into the docker container using OS environment variables:
 
