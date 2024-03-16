@@ -1,5 +1,8 @@
 FROM aeternity/builder:bionic-otp23 as pluginbuild
+
 ADD rebar.config rebar.lock /aeplugin_dev_mode/
+RUN cd /aeplugin_dev_mode && rebar3 compile -d
+
 ADD priv /aeplugin_dev_mode/priv/
 ADD src /aeplugin_dev_mode/src/
 ADD include /aeplugin_dev_mode/include/
