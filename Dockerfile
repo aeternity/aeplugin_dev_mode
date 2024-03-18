@@ -8,10 +8,11 @@ RUN cd /aeplugin_dev_mode && rebar3 ae_plugin
 
 FROM aeternity/aeternity:master
 
-COPY --from=pluginbuild /aeplugin_dev_mode/_build/default/aeplugin_dev_mode.ez /home/aeternity/node/plugins/
+COPY --from=pluginbuild /aeplugin_dev_mode/_build/default/aeplugin_dev_mode.ez plugins/
+RUN mkdir -p data/aeplugin_dev_mode
 
 # The priv/ and examples/devmode.yaml need to be copied explicitly
-ADD examples/devmode.yaml /home/aeternity/node/devmode.yaml
+ADD examples/devmode.yaml devmode.yaml
 
 EXPOSE 3313
 
