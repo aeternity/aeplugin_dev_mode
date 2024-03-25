@@ -44,7 +44,9 @@ mnesia_db_exists() ->
 suggest_prefunded(Filename, Accs) ->
     NodePrefunded = prefunded_pub_name(Filename),
     ok = generate_node_prefunded(Accs, NodePrefunded),
-    aeu_plugins:suggest_config(prefunded_accs_cfg_key(), NodePrefunded).
+    aeu_plugins:suggest_config(prefunded_accs_cfg_key(),
+                               %% the genesis key
+                               #{<<"1">> => #{<<"height">> => 0, <<"accounts_file">> => NodePrefunded}}).
 
 prefunded_pub_name(Filename) ->
     Dir = filename:dirname(Filename),
@@ -128,7 +130,7 @@ read_prefunded_accounts_file(F) ->
 ok({ok, Value}) -> Value.
 
 prefunded_accs_cfg_key() ->
-    [<<"system">>, <<"custom_prefunded_accs_file">>].
+    [<<"chain">>, <<"hard_forks">>].
 
 accounts_file(WSDir) ->
     case aeu_plugins:find_config(?PLUGIN_NAME_STR,
