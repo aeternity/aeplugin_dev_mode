@@ -1,7 +1,8 @@
 -module(aeplugin_dev_mode_prefunded).
 
 -export([ check_accounts/1
-        , get_prefunded/0 ]).
+        , get_prefunded/0
+        , format_gen_acct/1 ]).
 
 -include("aeplugin_dev_mode.hrl").
 

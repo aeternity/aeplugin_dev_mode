@@ -167,7 +167,7 @@ $ curl -H 'Accept: application/json' 'http://localhost:3313/spend?from=ak_2a1j2M
     "all_balances":[
       {
         "balance":500000,
-        "public_key":"ak_GLab8McCgXqng1pZbQDmjbCLw6f48qGyP4zWqzqBVnYwdNWVc"
+        "pub_key":"ak_GLab8McCgXqng1pZbQDmjbCLw6f48qGyP4zWqzqBVnYwdNWVc"
       }
 ...
 ```
@@ -208,33 +208,37 @@ Returns useful information about the chain and the dev mode plugin.
 ```
 $ curl -H 'Accept: application/json' http://localhost:3313/status?pp_json
 {
-  "accounts":[
+  "prefunded_accounts":[
     {
-      "private_key":"e6a91d633c77cf5771329d3354b3bcef1bc5e032c43d70b6d35af923ce1eb74dcea7ade470c9f99d9d4e400880a86f1d49bb444b62f11a9ebb64bbcfeb73fef3",
-      "public_key":"ak_2a1j2Mk9YSmC1gioUq4PWRm3bsv887MbuRVwyv4KaUGoR1eiKi"
+      "priv_key":"sk_5qkdYzx3z1dxMp0zVLO87xvF4DLEPXC201r5I84et00wqpDd",
+      "pub_key":"ak_2a1j2Mk9YSmC1gioUq4PWRm3bsv887MbuRVwyv4KaUGoR1eiKi",
+      "initial_balance":10000000000000000000000
     },
     {
-      "private_key":"fbb7adae450f0712b8586546215e899cf1211e1da95044ae13ac70b13c1eee7722d369a81c3f90da1b9445e66ccb3c76bd3043144497bac04db9f83c4991fec1",
-      "public_key":"ak_GLab8McCgXqng1pZbQDmjbCLw6f48qGyP4zWqzqBVnYwdNWVc"
+      "priv_key":"sk_+7etrkUPBxK4WGVGIV6JnPEhHh2pUESuE6xwsTwe7nc3P1+J",
+      "pub_key":"ak_GLab8McCgXqng1pZbQDmjbCLw6f48qGyP4zWqzqBVnYwdNWVc",
+      "initial_balance":10000000000000000000000
     },
     {
-      "private_key":"696ab494b4bc4a8c0cdc7c1aafe1a1c0e7845d3d849667827c6c2b1474d955c809814a2c17082abb4ae932f4bdbf5accf99e55f95fb5dddedaf558e9abed5880",
-      "public_key":"ak_5Bo28XwNzj95gZSuZXrebxgF2Jpqoy9yfMrjUZJ4ce3P5QGcx"
+      "priv_key":"sk_aWq0lLS8SowM3Hwar+GhwOeEXT2ElmeCfGwrFHTZVchIh4x+",
+      "pub_key":"ak_5Bo28XwNzj95gZSuZXrebxgF2Jpqoy9yfMrjUZJ4ce3P5QGcx",
+      "initial_balance":10000000000000000000000
     },
     {
-      "private_key":"ca06321cc4582d662be362e7625a99db25cbd2ba1a8103cba21caee3f8208b2dbabe6e80813107ce80dc7755363e89511337bb914f865ce8ad3c03fd78f035c0",
-      "public_key":"ak_2RF847YcuaZNeCtH6mXtc6GmtfZ1L89oTnSiN2yUkMqT4JQLAg"
+      "priv_key":"sk_ygYyHMRYLWYr42LnYlqZ2yXL0roagQPLohyu4/ggiy0n1xFr",
+      "pub_key":"ak_2RF847YcuaZNeCtH6mXtc6GmtfZ1L89oTnSiN2yUkMqT4JQLAg",
+      "initial_balance":10000000000000000000000
     }
   ],
   "chain":{
     "all_balances":[
       {
-        "balance":327000000000000000,
-        "public_key":"ak_2KAcA2Pp1nrR8Wkt3FtCkReGzAi8vJ9Snxa4PcmrthVx8AhPe8"
+        "balance":"327000000000000000",
+        "pub_key":"ak_2KAcA2Pp1nrR8Wkt3FtCkReGzAi8vJ9Snxa4PcmrthVx8AhPe8"
       },
       {
-        "balance":10000000000002673000000000000000,
-        "public_key":"ak_2a1j2Mk9YSmC1gioUq4PWRm3bsv887MbuRVwyv4KaUGoR1eiKi"
+        "balance":"10000000000002673000000000000000",
+        "pub_key":"ak_2a1j2Mk9YSmC1gioUq4PWRm3bsv887MbuRVwyv4KaUGoR1eiKi"
       }
     ],
     "mempool_height":0,

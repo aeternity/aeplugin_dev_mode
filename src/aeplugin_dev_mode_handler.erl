@@ -11,6 +11,7 @@
 
 -import(aeplugin_dev_mode_html, [html/1, meta/0]).
 -import(aeplugin_dev_mode_app, [emitter/0]).
+-import(aeplugin_dev_mode_prefunded, [format_gen_acct/1]).
 
 routes() ->
     [
@@ -266,7 +267,7 @@ serve_request(#{path := <<"/status">>}) ->
             <<"mempool_height">> => aec_tx_pool:size(),
             <<"all_balances">> => balances_json()
            },
-      <<"prefunded_accounts">> => PrefundedAccs
+      <<"prefunded_accounts">> => [format_gen_acct(A) || A <- PrefundedAccs]
      };
 serve_request(#{path := <<"/rollback">>, qs := Qs}) ->
     OldHeight = aec_chain:top_height(),
