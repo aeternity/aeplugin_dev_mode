@@ -4,26 +4,26 @@
     "properties" : {
         "prefunded" : {
             "type" : "object",
-	    "additionalProperties" : false,
+            "additionalProperties" : false,
             "properties" : {
                 "file" : {
-		    "description" : "Prefunded accounts file (JSON) for loading at chain init time",
-		    "type": "string"
-		},
+                    "description" : "Prefunded accounts file (JSON) for loading at chain init time",
+                    "type" : "string"
+                },
                 "gen" : {
-		    "description" : "Optional parameters for generating the file, if not present",
+                    "description" : "Optional parameters for generating the file, if not present",
                     "type" : "object",
-		    "additionalProperties" : false,
+                    "additionalProperties" : false,
                     "properties" : {
                         "quantity" : { "type" : "integer" },
                         "balance" : { "type" : "integer" },
-			"mnemonic" : { "type" : "string" }
+                        "mnemonic" : { "type" : "string" }
                     }
                 }
             }
         },
         "workspace_path" : {
-            "description": "Where to store plugin-specific data",
+            "description" : "Where to store plugin-specific data",
             "type" : "string"
         },
         "workspace_name" : {

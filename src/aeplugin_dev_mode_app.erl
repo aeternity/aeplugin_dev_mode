@@ -95,7 +95,7 @@ info() ->
     M = emitter(),
     #{ keyblock_interval      => M:get_keyblock_interval()
      , microblock_interval    => M:get_microblock_interval()
-     , auto_demit_microblocks => M:get_auto_emit_microblocks()
+     , auto_emit_microblocks  => M:get_auto_emit_microblocks()
      }.
 
 emitter() ->
